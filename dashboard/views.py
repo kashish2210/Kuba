@@ -269,6 +269,9 @@ def table_create(request):
         if table.floor.cafe_id != request.cafe.id:
             raise PermissionDenied("Invalid floor.")
         table.cafe = request.cafe
+        # Always activate new tables — the add-table form in list mode has no
+        # is_active checkbox, so Django would silently set it to False.
+        table.is_active = True
         table.sort_order = _next_table_sort_order(request.cafe, table.floor)
         table.save()
         log_action("create", cafe=request.cafe, request=request, target=table,

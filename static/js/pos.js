@@ -607,7 +607,7 @@
           gridEl.style.borderRadius = "8px";
           gridEl.style.overflow = "auto";
       } else {
-          gridEl.style = ""; // Reset styles
+          gridEl.removeAttribute("style"); // Reset all inline styles so CSS grid layout applies
       }
       
       floor.tables.forEach(function (t) {

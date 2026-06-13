@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}My Profile — {{ cafe.name|default:"Platform" }}{% endblock %}
+{% block breadcrumb %}My Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    max-width: 700px;
+    margin: 0 auto 30px auto;
+    background-image: radial-gradient(var(--border) 2px, transparent 2px);
+    background-size: 20px 20px;
+    background-position: -10px -10px;
+    position: relative;
+}
+.profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.3);
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s;
+    z-index: 2;
+}
+.profile-avatar-large:hover {
+    transform: scale(1.05);
+}
+.profile-avatar-large::after {
+    content: "Upload";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.profile-avatar-large:hover::after {
+    opacity: 1;
+}
+.profile-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.profile-form-box {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 28px;
+    margin-bottom: 24px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    background-image: radial-gradient(var(--border) 2px, transparent 2px);
+    background-size: 20px 20px;
+    background-position: -10px -10px;
+    z-index: 2;
+}
+.profile-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 4px;
+}
+.profile-role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.profile-body {
+    padding: 30px;
+}
+.profile-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+.form-grid {
+    position: relative;
+    z-index: 2;
+}
+/* Funky Geometric Background Shapes */
+.funky-shape { position: absolute; z-index: 0; opacity: 0.6; pointer-events: none; }
+.shape-1 { width: 70px; height: 70px; background: #FFD166; border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; top: 15%; left: 15%; transform: rotate(20deg); }
+.shape-2 { width: 50px; height: 50px; background: var(--sage, #c1e1c1); border-radius: 50%; bottom: 20%; right: 18%; transform: rotate(-15deg); }
+.shape-3 { width: 45px; height: 45px; background: #FFD166; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); top: -15px; right: 25px; transform: rotate(35deg); }
+.shape-4 { width: 35px; height: 35px; background: var(--primary, #f4a28f); border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; bottom: -15px; left: 40px; transform: rotate(-25deg); }
+/* Additional doubled shapes */
+.shape-5 { width: 30px; height: 30px; background: var(--sage); border-radius: 50%; top: 5%; left: 35%; transform: rotate(10deg); opacity: 0.7; }
+.shape-6 { width: 65px; height: 65px; background: #FFD166; border-radius: 30% 70% 70% 30% / 50% 30% 70% 50%; bottom: 10%; right: 35%; opacity: 0.5; }
+.shape-7 { width: 20px; height: 20px; background: var(--amber); clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); top: 60%; right: 5%; transform: rotate(-45deg); }
+.shape-8 { width: 50px; height: 10px; background: var(--primary); border-radius: 5px; top: 85%; left: 5%; transform: rotate(-15deg); opacity: 0.6; }
+.shape-9 { width: 15px; height: 15px; background: var(--sage); border-radius: 2px; top: -5%; left: 20%; transform: rotate(30deg); }
+.shape-10 { width: 80px; height: 80px; border: 3px dashed var(--amber); background: transparent; border-radius: 50%; top: 20%; right: -20px; transform: rotate(45deg); opacity: 0.4; }
+.shape-11 { width: 35px; height: 35px; background: #FFD166; border-radius: 40% 60% 50% 50% / 50% 40% 60% 50%; top: -10%; left: 10%; opacity: 0.8; transform: rotate(-30deg); }
+.shape-12 { width: 25px; height: 25px; background: var(--primary); border-radius: 50%; bottom: -5px; right: 40%; }
+.shape-13 { width: 45px; height: 45px; background: var(--sage); clip-path: polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%); top: 50%; left: -10px; transform: rotate(60deg); opacity: 0.5; }
+.shape-14 { width: 12px; height: 12px; background: #FFD166; border-radius: 50%; bottom: 50%; right: 15%; }
+.shape-15 { width: 35px; height: 35px; border: 4px solid var(--sage); background: transparent; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); bottom: 5%; left: 50%; transform: rotate(180deg); }
+.shape-16 { width: 60px; height: 60px; background: var(--amber); border-radius: 50% 50% 30% 70% / 60% 30% 70% 40%; top: 20%; left: -25px; opacity: 0.3; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <div class="profile-card">
+        <form method="post" enctype="multipart/form-data" id="profile-form">
+            {% csrf_token %}
+            <div class="profile-header">
+                <div class="funky-shape shape-1"></div>
+                <div class="funky-shape shape-2"></div>
+                <div class="funky-shape shape-5"></div>
+                <div class="funky-shape shape-6"></div>
+                <div class="funky-shape shape-9"></div>
+                <label for="{{ avatar_form.avatar.id_for_label }}" class="profile-avatar-large" title="Change Profile Picture">
+                    {% if request.user.profile.avatar %}
+                        <img src="{{ request.user.profile.avatar.url }}" alt="Profile avatar">
+                    {% else %}
+                        {{ request.user.username|first|upper }}
+                    {% endif %}
+                </label>
+                <div style="display:none;">{{ avatar_form.avatar }}</div>
+                <div class="profile-name">
+                    {% if request.user.first_name or request.user.last_name %}
+                        {{ request.user.first_name }} {{ request.user.last_name }}
+                    {% else %}
+                        {{ request.user.username }}
+                    {% endif %}
+                </div>
+                <div style="margin-top: 8px;">
+                    <span class="profile-role-badge">
+                        {% if request.user.is_superuser %}Platform Admin
+                        {% elif request.user.profile.role == 'admin' %}Cafe Admin
+                        {% elif request.user.profile.role == 'kitchen' %}Kitchen Staff
+                        {% else %}Cashier{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="profile-body">
+                <div class="profile-form-box">
+                    <div class="funky-shape shape-3"></div>
+                    <div class="funky-shape shape-7"></div>
+                    <div class="funky-shape shape-8"></div>
+                    <div class="funky-shape shape-10"></div>
+                    <h3 class="profile-section-title">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Personal Information
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" class="form-input" value="{{ request.user.username }}" disabled>
+                            <div class="form-help">Username cannot be changed.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.email.id_for_label }}">Email Address</label>
+                            {{ form.email }}
+                            {{ form.email.errors }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.first_name.id_for_label }}">First Name</label>
+                            {{ form.first_name }}
+                            {{ form.first_name.errors }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+                            {{ form.last_name }}
+                            {{ form.last_name.errors }}
+                        </div>
+                        <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 10px;">
+                            <button type="submit" name="update_profile" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="profile-body" style="padding-top: 0;">
+            <div class="profile-form-box">
+                <div class="funky-shape shape-4"></div>
+                <div class="funky-shape shape-11"></div>
+                <div class="funky-shape shape-12"></div>
+                <h3 class="profile-section-title" style="color: var(--muted);">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Security
+                </h3>
+                <form method="post" class="form-grid">
+                    {% csrf_token %}
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="{{ password_form.password.id_for_label }}">New Password</label>
+                        {{ password_form.password }}
+                        {{ password_form.password.errors }}
+                        <div class="form-help">Leave blank to keep your current password.</div>
+                    </div>
+                    <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 10px;">
+                        <button type="submit" name="change_password" class="btn btn-secondary">Update Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var avatarInput = document.getElementById('{{ avatar_form.avatar.id_for_label }}');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            var form = document.getElementById('profile-form');
+            var hiddenBtn = document.createElement('input');
+            hiddenBtn.type = 'hidden';
+            hiddenBtn.name = 'update_profile';
+            hiddenBtn.value = '1';
+            form.appendChild(hiddenBtn);
+            form.submit();
+        });
+    }
+});
+</script>
+{% endblock %}
