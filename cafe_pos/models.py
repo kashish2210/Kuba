@@ -64,7 +64,6 @@ class Product(models.Model):
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="products")
     name = models.CharField(max_length=200)
     category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, related_name="products")
-    image = models.ImageField(upload_to="product_images/", null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     unit_of_measure = models.CharField(max_length=20, choices=UnitOfMeasure.choices)
     tax_percentage = models.DecimalField(
@@ -74,7 +73,7 @@ class Product(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     description = models.TextField(null=True, blank=True)
-    image = models.ImageField(upload_to="products/", null=True, blank=True)
+    image = models.ImageField(upload_to="product_images/", null=True, blank=True)
     show_in_kds = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
 
