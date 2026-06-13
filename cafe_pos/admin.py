@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import ChatAssistantSettings, ChatMessage, ChatSession
+from .models import ChatAssistantSettings, ChatMessage, ChatSession, CustomReceiptTheme, ThemePurchase
 
 
 class ChatMessageInline(admin.TabularInline):
@@ -101,3 +101,67 @@ class ChatAssistantSettingsAdmin(admin.ModelAdmin):
             obj.save(update_fields=["product_data_json", "last_scraped_at"])
             updated += 1
         self.message_user(request, f"Refreshed menu data for {updated} cafe(s).")
+
+
+@admin.register(CustomReceiptTheme)
+class CustomReceiptThemeAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "price", "is_active", "total_sales", "total_revenue")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("name", "slug", "description")
+    prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ("total_sales", "total_revenue", "preview_theme")
+    
+    fieldsets = (
+        ("Core Information", {
+            "fields": ("name", "slug", "description", "price", "is_active"),
+        }),
+        ("Receipt Code & Visual Preview", {
+            "fields": ("html_content", "preview_theme"),
+            "description": "Enter valid receipt template HTML structure with styling and placeholders (like {{ name }}, {{ total }}).",
+        }),
+        ("Sales Metrics", {
+            "fields": ("total_sales", "total_revenue"),
+        }),
+    )
+
+    def total_sales(self, obj):
+        if obj.pk:
+            return obj.purchases.count()
+        return 0
+    total_sales.short_description = "Sales Count"
+
+    def total_revenue(self, obj):
+        if obj.pk:
+            return f"${obj.purchases.count() * obj.price:.2f}"
+        return "$0.00"
+    total_revenue.short_description = "Total Revenue"
+
+    def preview_theme(self, obj):
+        if not obj.html_content:
+            return "Enter HTML content and save to preview."
+        return format_html(
+            '<div style="border: 2px solid var(--primary, #c8903e); border-radius: 12px; overflow: hidden; max-width: 420px; background: #faf7f0; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">'
+            '  <div style="background: #2c1e0f; color: #faf7f0; padding: 12px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">'
+            '    <span>Receipt Live Preview</span>'
+            '    <span style="font-size: 11px; color: #c8903e; border: 1px solid #c8903e; padding: 2px 6px; border-radius: 4px;">{name}</span>'
+            '  </div>'
+            '  <iframe srcdoc="{html}" style="width: 100%; height: 450px; border: none; background: white;"></iframe>'
+            '</div>',
+            name=obj.name,
+            html=obj.html_content
+        )
+    preview_theme.short_description = "Visual Preview"
+
+
+@admin.register(ThemePurchase)
+class ThemePurchaseAdmin(admin.ModelAdmin):
+    list_display = ("cafe", "theme", "purchased_at", "purchase_price", "is_active")
+    list_filter = ("is_active", "purchased_at", "theme")
+    search_fields = ("cafe__name", "theme__name", "theme__slug")
+    readonly_fields = ("purchase_price",)
+
+    def purchase_price(self, obj):
+        if obj.theme:
+            return f"${obj.theme.price:.2f}"
+        return "—"
+    purchase_price.short_description = "Purchase Price"

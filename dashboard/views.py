@@ -72,6 +72,10 @@ def home(request):
     if getattr(request, "is_admin_host", False):
         return redirect("/admin/")
     if getattr(request, "cafe", None) is None:
+        if request.user.is_authenticated:
+            cafe = _user_cafe(request.user)
+            if cafe is not None:
+                return redirect(cafe.dashboard_url(request))
         return render(request, "landing.html")
     # Cashiers go straight to the POS terminal; admins/superusers get the admin panel.
     if request.user.is_authenticated and not request.user.is_superuser:
@@ -497,34 +501,6 @@ def _resequence_floor_tables(cafe, floor_id):
             changed = True
     if changed:
         CafeTable.objects.bulk_update(tables, ["sort_order"])
-@cafe_admin_required
-@require_POST
-def table_move(request):
-    try:
-        data = json.loads(request.body)
-        table_id = data.get("table_id")
-        target_floor_id = data.get("target_floor_id")
-        swap_table_id = data.get("swap_table_id")
-
-        table = get_object_or_404(CafeTable, pk=table_id, cafe=request.cafe)
-        target_floor = get_object_or_404(Floor, pk=target_floor_id, cafe=request.cafe)
-
-        # Move to target floor
-        if table.floor_id != target_floor.id:
-            table.floor = target_floor
-            table.save(update_fields=["floor"])
-            log_action("update", cafe=request.cafe, request=request, target=table,
-                       message=f"Moved table '{table.table_number}' to {target_floor.name}.")
-
-        if swap_table_id:
-            swap_table = get_object_or_404(CafeTable, pk=swap_table_id, cafe=request.cafe)
-            table.sort_order, swap_table.sort_order = swap_table.sort_order, table.sort_order
-            table.save(update_fields=["sort_order"])
-            swap_table.save(update_fields=["sort_order"])
-
-        return JsonResponse({"ok": True, "redirect_url": f"{_floors_url(request)}?floor={target_floor.id}"})
-    except Exception as e:
-        return JsonResponse({"ok": False, "message": str(e)}, status=400)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1091,25 +1067,47 @@ def receipt_apply_theme(request):
     """Return the HTML content of a receipt theme so the editor can load it."""
     import json
     from pathlib import Path
+    from cafe_pos.models import CustomReceiptTheme, ThemePurchase
 
     data = json.loads(request.body) if request.content_type == "application/json" else {}
     slug = data.get("theme", "")
-    if slug not in RECEIPT_THEMES:
-        return JsonResponse({"error": "Unknown theme."}, status=400)
-    theme_path = Path(settings.BASE_DIR) / "templates" / "receipts" / "themes" / RECEIPT_THEMES[slug]["file"]
-    if not theme_path.is_file():
-        return JsonResponse({"error": "Theme file not found."}, status=404)
-    html = theme_path.read_text(encoding="utf-8")
-    return JsonResponse({"html": html, "name": RECEIPT_THEMES[slug]["name"]})
+    
+    # 1. Check if it's a built-in theme
+    if slug in RECEIPT_THEMES:
+        theme_path = Path(settings.BASE_DIR) / "templates" / "receipts" / "themes" / RECEIPT_THEMES[slug]["file"]
+        if not theme_path.is_file():
+            return JsonResponse({"error": "Theme file not found."}, status=404)
+        html = theme_path.read_text(encoding="utf-8")
+        return JsonResponse({"html": html, "name": RECEIPT_THEMES[slug]["name"]})
+
+    # 2. Check if it's a purchased theme
+    try:
+        purchase = ThemePurchase.objects.get(cafe=request.cafe, theme__slug=slug, is_active=True)
+        return JsonResponse({"html": purchase.theme.html_content, "name": purchase.theme.name})
+    except ThemePurchase.DoesNotExist:
+        return JsonResponse({"error": "Unknown or unpurchased theme."}, status=400)
 
 
 @cafe_admin_required
 def receipt_themes_list(request):
     """Return the list of available themes as JSON."""
+    from cafe_pos.models import ThemePurchase
+
+    # Built-in themes
     themes = [
         {"slug": slug, "name": info["name"], "desc": info["desc"]}
         for slug, info in RECEIPT_THEMES.items()
     ]
+    
+    # Purchased custom themes
+    purchased = ThemePurchase.objects.filter(cafe=request.cafe, is_active=True).select_related("theme")
+    for p in purchased:
+        themes.append({
+            "slug": p.theme.slug,
+            "name": f"{p.theme.name} (Premium)",
+            "desc": p.theme.description or "Premium custom receipt theme."
+        })
+        
     return JsonResponse({"themes": themes})
 
 

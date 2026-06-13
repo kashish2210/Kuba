@@ -571,3 +571,41 @@ class ReceiptSettings(models.Model):
 
     def __str__(self):
         return f"Receipt settings — {self.cafe.name}"
+
+
+class CustomReceiptTheme(models.Model):
+    name = models.CharField(max_length=150)
+    slug = models.SlugField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00, help_text="Price in USD / flat fee")
+    html_content = models.TextField(help_text="HTML template for the receipt. Can use placeholders.")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "tenants"
+        db_table = "cafe_pos_customreceipttheme"
+        verbose_name = "Custom Receipt Theme"
+        verbose_name_plural = "Custom Receipt Themes"
+
+    def __str__(self):
+        return f"{self.name} (${self.price})"
+
+
+class ThemePurchase(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="theme_purchases")
+    theme = models.ForeignKey(CustomReceiptTheme, on_delete=models.CASCADE, related_name="purchases")
+    purchased_at = models.DateTimeField(default=timezone.now)
+    is_active = models.BooleanField(default=True, help_text="Active license status")
+
+    class Meta:
+        app_label = "tenants"
+        db_table = "cafe_pos_themepurchase"
+        verbose_name = "Theme Purchase"
+        verbose_name_plural = "Theme Purchases"
+        constraints = [
+            models.UniqueConstraint(fields=["cafe", "theme"], name="uniq_purchase_per_cafe_theme"),
+        ]
+
+    def __str__(self):
+        return f"{self.cafe.name} purchased {self.theme.name}"
