@@ -87,25 +87,35 @@
           var row = document.createElement("div");
           row.className = "cart-line";
           row.dataset.line = ln.id;
+          
+          var discountHtml = "";
+          if (ln.line_discount && Number(ln.line_discount) > 0) {
+              discountHtml = '<div style="grid-column: 1 / -1; font-size: 0.75rem; color: #e74c3c; border: 1px solid #fad6d3; background: #fff; padding: 2px 6px; border-radius: 4px; margin-top: 4px;">Discount: ' + money(ln.line_discount) + ' off</div>';
+          }
+          
           row.innerHTML =
             '<div><div class="cl-name">' + ln.name + '</div><div class="cl-each">' + money(ln.unit_price) + " each</div></div>" +
             '<div class="cl-qty"><button data-act="dec">−</button><span>' + ln.quantity + '</span><button data-act="inc">+</button></div>' +
             '<div class="cl-total">' + money(ln.line_total) + "</div>" +
-            '<button class="cl-remove" data-act="rm">×</button>';
+            '<button class="cl-remove" data-act="rm">×</button>' + discountHtml;
           lines.appendChild(row);
         });
       }
-      setSummary(order.subtotal, order.tax_amount, order.discount_amount, order.total);
+      setSummary(order.subtotal, order.tax_amount, order.discount_amount, order.total, order.coupon_desc);
       $("pay-amount").textContent = money(order.total);
       updatePayDetail();
     }
 
-    function setSummary(sub, tax, disc, total) {
+    function setSummary(sub, tax, disc, total, couponDesc) {
       $("sum-subtotal").textContent = money(sub);
       $("sum-tax").textContent = money(tax);
       $("sum-total").textContent = money(total);
       var row = $("cs-discount-row");
-      if (disc && Number(disc) > 0) { row.hidden = false; $("sum-discount").textContent = "−" + money(disc); }
+      if (disc && Number(disc) > 0) { 
+          row.hidden = false; 
+          var desc = couponDesc ? "(" + couponDesc + ")" : "";
+          $("sum-discount").textContent = "− " + money(disc) + desc; 
+      }
       else { row.hidden = true; }
     }
 
@@ -163,9 +173,35 @@
 
     $("btn-discount").addEventListener("click", function () {
       if (!order) { openFloor(); toast("Select a table first"); return; }
-      promptModal("Apply discount", [{ name: "amount", label: "Discount amount (₹)", type: "number" }], function (vals) {
-        api(orderUrl("discount/"), "POST", { amount: vals.amount || 0 }).then(setOrder).catch(showErr);
-      });
+      
+      var modal = $("prompt-modal");
+      $("prompt-title").textContent = "Apply Discount";
+      var body = $("prompt-body");
+      
+      var html = '<div class="prompt-field"><label>Manual Discount Amount (₹)</label><input id="disc-amount" type="number" placeholder="0"></div>';
+      html += '<div style="margin: 10px 0; text-align: center; color: var(--muted); font-size: 0.85rem; font-weight: bold;">-- OR --</div>';
+      html += '<div class="prompt-field"><label>Select or Enter Coupon Code</label>';
+      html += '<input id="disc-coupon" type="text" list="available-coupons" placeholder="Select from list or type code" style="text-transform: uppercase;" autocomplete="off">';
+      if (window.POS.coupons && window.POS.coupons.length > 0) {
+          html += '<datalist id="available-coupons">';
+          window.POS.coupons.forEach(function(c) {
+              var label = c.value + (c.type === "percentage" ? "%" : "₹") + ' OFF';
+              html += '<option value="' + c.code + '">' + label + '</option>';
+          });
+          html += '</datalist>';
+      }
+      html += '</div>';
+      
+      html += '<button class="pay-confirm" id="prompt-ok">Enter</button>';
+      body.innerHTML = html;
+      modal.hidden = false;
+      
+      $("prompt-ok").onclick = function () {
+        var amt = document.getElementById("disc-amount").value;
+        var cpn = document.getElementById("disc-coupon").value.trim();
+        modal.hidden = true;
+        api(orderUrl("discount/"), "POST", { amount: amt || 0, coupon_code: cpn }).then(setOrder).catch(showErr);
+      };
     });
 
     $("btn-customer").addEventListener("click", function () {
@@ -173,7 +209,7 @@
       promptModal("Assign customer", [
         { name: "name", label: "Name", type: "text" },
         { name: "phone", label: "Phone (optional)", type: "text" },
-        { name: "email", label: "Email (optional)", type: "email" },
+        { name: "email", label: "Email (required for receipt)", type: "email" },
       ], function (vals) {
         api(orderUrl("customer/"), "POST", vals).then(function (d) { setOrder(d); toast("Customer assigned"); }).catch(showErr);
       });
@@ -273,6 +309,11 @@
     $("btn-pay").addEventListener("click", function () {
       if (!order || !order.lines.length) { toast("Cart is empty"); return; }
       if (!method) { toast("Select a payment method"); return; }
+      if (!order.customer || !order.customer.name || !order.customer.email) {
+          toast("Customer Name & Email are required for receipts!");
+          $("btn-customer").click();
+          return;
+      }
       
       if (method === "razorpay" || method === "card") {
         api(orderUrl("razorpay/create/"), "POST", {}).then(function (data) {

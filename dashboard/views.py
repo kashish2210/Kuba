@@ -449,6 +449,32 @@ def product_delete(request, pk):
 
 
 @cafe_admin_required
+@require_POST
+def product_bulk_action(request):
+    action = request.POST.get("action")
+    product_ids = request.POST.getlist("product_ids")
+    if not action or not product_ids:
+        messages.error(request, "No action or products selected.")
+        return redirect("dashboard:products")
+    
+    products = Product.objects.filter(cafe=request.cafe, id__in=product_ids)
+    count = products.count()
+    if action == "delete":
+        products.delete()
+        log_action("delete", cafe=request.cafe, request=request, target=None,
+                   message=f"Deleted {count} products in bulk.")
+        messages.success(request, f"{count} products deleted.")
+    elif action == "archive":
+        products.update(is_active=False)
+        log_action("update", cafe=request.cafe, request=request, target=None,
+                   message=f"Archived {count} products in bulk.")
+        messages.success(request, f"{count} products archived.")
+    else:
+        messages.error(request, "Invalid action.")
+    return redirect("dashboard:products")
+
+
+@cafe_admin_required
 def categories(request):
     cafe = request.cafe
     edit_id = request.GET.get("edit")

@@ -27,11 +27,24 @@
 {% else %}
 <div class="card"><div class="card-body">
     {% if products %}
-    <table class="data-table">
-        <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Tax</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
-        <tbody>
+    <form id="bulk-action-form" method="post" action="{% url 'dashboard:product-bulk-action' %}">
+        {% csrf_token %}
+        <div id="bulk-action-bar" style="display:none; padding: 12px; background: #fff5f2; border: 2px dashed #f5b7b1; border-radius: 12px; margin-bottom: 16px; align-items: center; justify-content: space-between;">
+            <div style="font-weight:bold; color: #d35400;"><span id="sel-count">0</span> products selected</div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" name="action" value="archive" class="btn btn-secondary btn-sm" onclick="return confirm('Archive selected products?');">Archive</button>
+                <button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete selected products?');">Delete</button>
+            </div>
+        </div>
+        <table class="data-table" id="products-table">
+            <thead><tr>
+                <th style="width:40px;"><input type="checkbox" id="check-all"></th>
+                <th>Name</th><th>Category</th><th>Price</th><th>Tax</th><th>Status</th><th class="text-right">Actions</th>
+            </tr></thead>
+            <tbody>
         {% for p in products %}
             <tr>
+                <td><input type="checkbox" name="product_ids" value="{{ p.id }}" class="row-check"></td>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;">
                         {% if p.image %}
@@ -61,6 +74,7 @@
         {% endfor %}
         </tbody>
     </table>
+    </form>
     {% else %}
     <div class="empty-state">
         <h3 class="empty-state-title">No products yet</h3>
@@ -69,4 +83,34 @@
     {% endif %}
 </div></div>
 {% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const checkAll = document.getElementById("check-all");
+    const rowChecks = document.querySelectorAll(".row-check");
+    const bulkBar = document.getElementById("bulk-action-bar");
+    const selCount = document.getElementById("sel-count");
+
+    function updateBulkBar() {
+        if (!bulkBar) return;
+        const checked = document.querySelectorAll(".row-check:checked").length;
+        if (checked > 0) {
+            bulkBar.style.display = "flex";
+            selCount.textContent = checked;
+        } else {
+            bulkBar.style.display = "none";
+        }
+        if (checkAll) checkAll.checked = (checked === rowChecks.length && rowChecks.length > 0);
+    }
+
+    if (checkAll) {
+        checkAll.addEventListener("change", function() {
+            rowChecks.forEach(c => c.checked = this.checked);
+            updateBulkBar();
+        });
+    }
+
+    rowChecks.forEach(c => c.addEventListener("change", updateBulkBar));
+});
+</script>
 {% endblock %}

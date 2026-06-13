@@ -77,6 +77,7 @@ def order_json(order):
             "name": line.product.name,
             "unit_price": float(line.unit_price),
             "quantity": line.quantity,
+            "line_discount": float(line.line_discount),
             "line_total": float(line.line_total),
             "tax_percentage": float(line.product.tax_percentage),
         })
@@ -99,6 +100,7 @@ def order_json(order):
         "subtotal": float(order.subtotal),
         "tax_amount": float(order.tax_amount),
         "discount_amount": float(order.discount_amount or 0),
+        "coupon_desc": f"{float(order.coupon.discount_value):g}%" if order.coupon_id and order.coupon.discount_type == "percentage" else "",
         "total": float(order.total),
         "created_at": order.created_at.strftime("%d/%m %H:%M"),
     }

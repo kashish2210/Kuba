@@ -135,7 +135,12 @@ window.POS = {
         ordersPage: "{% url 'pos:orders' %}"
     },
     razorpayKeyId: "{{ payment_settings.razorpay_key_id|default:''|escapejs }}",
-    cafeName: "{{ request.cafe.name|escapejs }}"
+    cafeName: "{{ request.cafe.name|escapejs }}",
+    coupons: [
+        {% for c in coupons %}
+        { id: {{ c.id }}, code: "{{ c.code|escapejs }}", type: "{{ c.discount_type }}", value: {{ c.discount_value }} },
+        {% endfor %}
+    ]
 };
 </script>
 {% endblock %}

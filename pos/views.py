@@ -19,6 +19,7 @@ from cafe_pos.models import (
     Product,
     ProductCategory,
     PaymentSettings,
+    Coupon,
 )
 from dashboard.mixins import cafe_admin_required
 from tenants.utils import log_action
@@ -77,6 +78,7 @@ def terminal(request):
             getattr(request.user, "profile", None) and request.user.profile.role == "admin"
         ),
         "payment_settings": PaymentSettings.objects.filter(cafe=cafe).first(),
+        "coupons": Coupon.objects.filter(cafe=cafe, is_active=True),
     }
     return render(request, "pos/terminal.html", context)
 
@@ -280,11 +282,29 @@ def order_discount(request, pk):
     order = _get_order(request, pk)
     if (resp := _editable_or_400(order)):
         return resp
-    amount = _decimal(_data(request).get("amount"))
+    data = _data(request)
+    coupon_code = data.get("coupon_code")
+    
+    if coupon_code:
+        coupon = Coupon.objects.filter(cafe=request.cafe, code__iexact=coupon_code, is_active=True).first()
+        if not coupon:
+            return JsonResponse({"error": f"Invalid or expired coupon: {coupon_code}"}, status=400)
+        order.coupon = coupon
+        order.discount_amount = Decimal("0") # temp clear to calc subtotal
+        services.recalc_order(order)
+        if coupon.discount_type == Coupon.DiscountType.PERCENTAGE:
+            amount = order.subtotal * (coupon.discount_value / Decimal("100"))
+        else:
+            amount = coupon.discount_value
+    else:
+        order.coupon = None
+        amount = _decimal(data.get("amount"))
+
     if amount < 0:
         amount = Decimal("0")
+        
     order.discount_amount = amount
-    order.save(update_fields=["discount_amount"])
+    order.save(update_fields=["discount_amount", "coupon"])
     services.recalc_order(order)
     return JsonResponse(services.order_json(order))
 
@@ -304,6 +324,8 @@ def order_customer(request, pk):
         if not name:
             return JsonResponse({"error": "Customer name is required."}, status=400)
         email = (data.get("email") or "").strip().lower() or None
+        if not email:
+            return JsonResponse({"error": "Customer email is required for receipts."}, status=400)
         customer = None
         if email:
             customer = Customer.objects.filter(cafe=cafe, email=email).first()
@@ -340,6 +362,8 @@ def order_pay(request, pk):
         return JsonResponse({"error": "Order already paid."}, status=400)
     if not order.line_items.exists():
         return JsonResponse({"error": "Cart is empty."}, status=400)
+    if not order.customer_id or not order.customer.email:
+        return JsonResponse({"error": "Customer name and email are mandatory for receipts."}, status=400)
 
     data = _data(request)
     method = data.get("method_type")
@@ -401,6 +425,8 @@ def order_razorpay_create(request, pk):
         return JsonResponse({"error": "Order already paid."}, status=400)
     if not order.line_items.exists():
         return JsonResponse({"error": "Cart is empty."}, status=400)
+    if not order.customer_id or not order.customer.email:
+        return JsonResponse({"error": "Customer name and email are mandatory for receipts."}, status=400)
         
     settings_obj = PaymentSettings.objects.filter(cafe=request.cafe).first()
     if not settings_obj or not settings_obj.razorpay_enabled or not settings_obj.razorpay_key_id or not settings_obj.razorpay_key_secret:
