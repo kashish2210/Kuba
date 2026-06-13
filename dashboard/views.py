@@ -16,6 +16,8 @@ from django.views.decorators.http import require_POST
 
 from cafe_pos.models import (
     CafeTable,
+    ChatAssistantSettings,
+    ChatSession,
     Coupon,
     Customer,
     Floor,
@@ -38,6 +40,7 @@ from tenants.utils import log_action
 from .forms import (
     CafeCustomizeForm,
     CategoryForm,
+    ChatAssistantSettingsForm,
     CouponForm,
     EmployeeForm,
     FloorForm,
@@ -183,7 +186,7 @@ def floors(request):
         "occupied_table_ids": occupied_table_ids,
         "edit_floor": request.GET.get("edit_floor") == "1",
         "edit_table": edit_table,
-        "floor_form": FloorForm(instance=active_floor if request.GET.get("edit_floor") == "1" else None),
+        "floor_form": FloorForm(instance=active_floor),
         "table_form": TableForm(cafe=cafe, instance=edit_table),
     }
     return render(request, "dashboard/floors.html", context)
@@ -196,6 +199,7 @@ def floor_create(request):
     if form.is_valid():
         floor = form.save(commit=False)
         floor.cafe = request.cafe
+        floor.canvas_mode = request.POST.get("canvas_mode") == "on"
         floor.save()
         log_action("create", cafe=request.cafe, request=request, target=floor,
                    message=f"Added floor '{floor.name}'.")
@@ -211,11 +215,35 @@ def floor_update(request, pk):
     floor = get_object_or_404(Floor, pk=pk, cafe=request.cafe)
     form = FloorForm(request.POST, instance=floor)
     if form.is_valid():
-        form.save()
+        floor = form.save(commit=False)
+        # canvas_mode cannot be toggled here anymore, as per requirements
+        floor.save()
         log_action("update", cafe=request.cafe, request=request, target=floor,
                    message=f"Renamed floor to '{floor.name}'.")
         messages.success(request, "Floor updated.")
     return redirect(f"{_floors_url(request)}?floor={floor.id}")
+
+@cafe_admin_required
+@require_POST
+def save_floor_plan(request, pk):
+    floor = get_object_or_404(Floor, pk=pk, cafe=request.cafe)
+    try:
+        data = json.loads(request.body)
+        tables_data = data.get("tables", [])
+        for t_data in tables_data:
+            table_id = t_data.get("id")
+            if not table_id: continue
+            
+            CafeTable.objects.filter(id=table_id, floor=floor).update(
+                pos_x=t_data.get("pos_x", 0),
+                pos_y=t_data.get("pos_y", 0),
+                width=t_data.get("width", 80),
+                height=t_data.get("height", 80),
+                shape=t_data.get("shape", "rect")
+            )
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        return JsonResponse({"ok": False, "message": str(e)})
 
 
 @cafe_admin_required
@@ -250,6 +278,41 @@ def table_create(request):
         f"{k}: {', '.join(v)}" for k, v in form.errors.items()))
     floor_id = request.POST.get("floor", "")
     return redirect(f"{_floors_url(request)}?floor={floor_id}")
+
+
+@cafe_admin_required
+@require_POST
+def table_create_ajax(request):
+    try:
+        data = json.loads(request.body)
+        floor = get_object_or_404(Floor, pk=data.get("floor_id"), cafe=request.cafe)
+        table = CafeTable.objects.create(
+            cafe=request.cafe,
+            floor=floor,
+            table_number=data.get("table_number"),
+            seats=int(data.get("seats", 4)),
+            pos_x=float(data.get("pos_x", 0)),
+            pos_y=float(data.get("pos_y", 0)),
+            width=float(data.get("width", 80)),
+            height=float(data.get("height", 80)),
+            shape="rect",
+            sort_order=_next_table_sort_order(request.cafe, floor)
+        )
+        return JsonResponse({
+            "ok": True,
+            "table": {
+                "id": table.id,
+                "table_number": table.table_number,
+                "seats": table.seats,
+                "pos_x": table.pos_x,
+                "pos_y": table.pos_y,
+                "width": table.width,
+                "height": table.height,
+                "shape": table.shape
+            }
+        })
+    except Exception as e:
+        return JsonResponse({"ok": False, "message": str(e)})
 
 
 @cafe_admin_required
@@ -1354,3 +1417,78 @@ def coming_soon(request):
         "coupons": "Coupons & Promotions",
     }.get(request.resolver_match.url_name, "This module")
     return render(request, "dashboard/coming_soon.html", {"label": label})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Chat Assistant
+# ─────────────────────────────────────────────────────────────────────────────
+
+@cafe_admin_required
+def assistant_settings(request):
+    import json
+    cafe = request.cafe
+    obj, _ = ChatAssistantSettings.objects.get_or_create(cafe=cafe)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "scrape":
+            from cafe_pos.chatbot import scrape_menu_data
+            from django.utils import timezone as tz
+            data = scrape_menu_data(cafe)
+            obj.product_data_json = json.dumps(data, ensure_ascii=False, indent=2)
+            obj.last_scraped_at = tz.now()
+            obj.save(update_fields=["product_data_json", "last_scraped_at"])
+            messages.success(request, "Menu data refreshed successfully.")
+            return redirect("dashboard:assistant-settings")
+
+        form = ChatAssistantSettingsForm(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            log_action("update", cafe=cafe, request=request, message="Updated AI chat assistant settings.")
+            messages.success(request, "Chat assistant settings saved.")
+            return redirect("dashboard:assistant-settings")
+    else:
+        form = ChatAssistantSettingsForm(instance=obj)
+
+    menu_summary = None
+    if obj.product_data_json:
+        try:
+            parsed = json.loads(obj.product_data_json)
+            cats = parsed.get("menu", [])
+            total_items = sum(len(c.get("items", [])) for c in cats)
+            menu_summary = {"categories": len(cats), "items": total_items}
+        except Exception:
+            pass
+
+    return render(request, "dashboard/assistant_settings.html", {
+        "form": form,
+        "obj": obj,
+        "menu_summary": menu_summary,
+    })
+
+
+@cafe_admin_required
+def assistant_sessions(request):
+    cafe = request.cafe
+    qs = ChatSession.objects.filter(cafe=cafe).prefetch_related("messages").select_related("order")
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "dashboard/assistant_sessions.html", {"page": page})
+
+
+@cafe_admin_required
+def assistant_session_detail(request, pk):
+    session = get_object_or_404(ChatSession, pk=pk, cafe=request.cafe)
+    msgs = session.messages.order_by("created_at")
+    return render(request, "dashboard/assistant_session_detail.html", {
+        "session": session,
+        "msgs": msgs,
+    })
+
+
+@cafe_admin_required
+@require_POST
+def assistant_session_delete(request, pk):
+    session = get_object_or_404(ChatSession, pk=pk, cafe=request.cafe)
+    session.delete()
+    messages.success(request, "Conversation deleted.")
+    return redirect("dashboard:assistant-sessions")

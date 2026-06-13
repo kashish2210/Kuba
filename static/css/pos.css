@@ -113,8 +113,9 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Modals ── */
 .pos-modal { position: fixed; inset: 0; background: rgba(20,17,13,.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .pos-modal[hidden] { display: none; }
-.pos-modal-card { background: #fff; border-radius: 18px; padding: 18px; width: min(720px, 92vw); max-height: 88vh; overflow-y: auto; }
+.pos-modal-card { background: #fff; border-radius: 18px; padding: 18px; width: min(720px, 92vw); max-height: 88vh; overflow-y: auto; overflow-x: hidden; }
 .pos-modal-sm { width: min(420px, 92vw); }
+.pos-modal-lg { width: min(1000px, 95vw); max-height: 95vh; }
 .pos-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .pos-modal-head h3 { margin: 0; }
 .pos-modal-close { border: none; background: none; font-size: 1.2rem; color: var(--muted); }

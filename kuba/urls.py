@@ -19,12 +19,18 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from cafe_pos import chat_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('', include('tenants.urls')),
     path('pos/', include('pos.urls')),
     path('', include('dashboard.urls')),
+    # Public chat session (no login required, token-gated)
+    path('session/<uuid:token>/', chat_views.chat_session, name='chat-session'),
+    path('session/<uuid:token>/chat/', chat_views.chat_message, name='chat-message'),
+    path('session/<uuid:token>/accept-terms/', chat_views.accept_terms, name='chat-accept-terms'),
 ]
 
 if settings.DEBUG:

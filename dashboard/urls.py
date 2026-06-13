@@ -11,8 +11,10 @@ urlpatterns = [
     path("floors/", views.floors, name="floors"),
     path("floors/add/", views.floor_create, name="floor-create"),
     path("floors/<int:pk>/edit/", views.floor_update, name="floor-update"),
+    path("floors/<int:pk>/save-plan/", views.save_floor_plan, name="floor-save-plan"),
     path("floors/<int:pk>/delete/", views.floor_delete, name="floor-delete"),
     path("tables/add/", views.table_create, name="table-create"),
+    path("tables/add/ajax/", views.table_create_ajax, name="table-create-ajax"),
     path("tables/<int:pk>/edit/", views.table_update, name="table-update"),
     path("tables/<int:pk>/delete/", views.table_delete, name="table-delete"),
     path("tables/move/", views.table_move, name="table-move"),
@@ -66,6 +68,12 @@ urlpatterns = [
     # Customize & audit
     path("customize/", views.customize, name="customize"),
     path("audit/", views.audit_log, name="audit-log"),
+
+    # AI Chat Assistant
+    path("assistant/", views.assistant_settings, name="assistant-settings"),
+    path("assistant/sessions/", views.assistant_sessions, name="assistant-sessions"),
+    path("assistant/sessions/<int:pk>/", views.assistant_session_detail, name="assistant-session-detail"),
+    path("assistant/sessions/<int:pk>/delete/", views.assistant_session_delete, name="assistant-session-delete"),
 
     # Deferred POS modules
     path("pos/", views.coming_soon, name="pos-session"),

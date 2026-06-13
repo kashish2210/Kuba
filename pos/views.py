@@ -36,6 +36,27 @@ from channels.layers import get_channel_layer
 EDITABLE_STATUSES = {Order.OrderStatus.DRAFT, Order.OrderStatus.SENT_TO_KITCHEN, Order.OrderStatus.READY}
 
 
+def _send_chat_invite(order, request):
+    """Create a ChatSession for the order and email the customer a chat link (best-effort)."""
+    if not order.customer_id or not order.customer.email:
+        return
+    try:
+        from cafe_pos.models import ChatAssistantSettings, ChatSession
+        assistant = ChatAssistantSettings.objects.filter(cafe=order.cafe).first()
+        if not assistant or not assistant.is_enabled:
+            return
+        session = ChatSession.objects.create(
+            cafe=order.cafe,
+            order=order,
+            customer_name=order.customer.name,
+            customer_email=order.customer.email,
+        )
+        from cafe_pos.receipts import email_chat_invite
+        email_chat_invite(order, order.customer.email, session.session_token, request=request)
+    except Exception:
+        pass
+
+
 def _data(request):
     if request.content_type and "application/json" in request.content_type:
         try:
@@ -182,6 +203,7 @@ def tables(request):
         data.append({
             "id": floor.id,
             "name": floor.name,
+            "canvas_mode": floor.canvas_mode,
             "tables": [
                 {
                     "id": t.id,
@@ -193,6 +215,11 @@ def tables(request):
                     "locked": t.is_occupied,
                     "customer_email": table_emails.get(t.id, ""),
                     "has_reviewed": table_reviewed.get(t.id, False),
+                    "pos_x": t.pos_x,
+                    "pos_y": t.pos_y,
+                    "width": t.width,
+                    "height": t.height,
+                    "shape": t.shape,
                 }
                 for t in floor.tables.all() if t.is_active
             ],
@@ -207,12 +234,16 @@ def table_release(request, pk):
     table = get_object_or_404(CafeTable, pk=pk, cafe=request.cafe)
     wants_json = "application/json" in (request.content_type or "")
     active = Order.objects.filter(cafe=request.cafe, table=table, status__in=EDITABLE_STATUSES).exists()
-    if active:
+    
+    is_admin = request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role == 'admin')
+    
+    if active and not is_admin:
         if wants_json:
             return JsonResponse({"error": "There is still an open order on this table."}, status=400)
         from django.contrib import messages
         messages.error(request, f"Table {table.table_number} still has an open order. Complete or cancel it first.")
         return redirect(request.META.get("HTTP_REFERER", "/"))
+        
     table.is_occupied = False
     table.save(update_fields=["is_occupied"])
     log_action("update", cafe=request.cafe, request=request, target=table,
@@ -546,6 +577,9 @@ def order_pay(request, pk):
         from cafe_pos.receipts import email_receipt
         receipt_emailed = email_receipt(order, order.customer.email, request=request)
 
+    # Send chat invite email if the assistant is enabled for this cafe.
+    _send_chat_invite(order, request)
+
     return JsonResponse({
         "ok": True,
         "order_number": order.order_number,
@@ -650,6 +684,8 @@ def order_razorpay_verify(request, pk):
     if order.customer_id and order.customer.email:
         from cafe_pos.receipts import email_receipt
         receipt_emailed = email_receipt(order, order.customer.email, request=request)
+
+    _send_chat_invite(order, request)
 
     return JsonResponse({
         "ok": True,

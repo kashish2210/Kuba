@@ -542,21 +542,47 @@
           tab.addEventListener("click", function () {
             tabs.querySelectorAll(".floor-tab").forEach(function (t) { t.classList.remove("active"); });
             tab.classList.add("active");
-            renderTables(fl.tables);
+            renderTables(fl);
           });
           tabs.appendChild(tab);
         });
-        renderTables(data.floors[0].tables);
+        renderTables(data.floors[0]);
       }).catch(showErr);
     }
 
-    function renderTables(tables) {
+    function renderTables(floor) {
       var gridEl = $("floor-grid");
       gridEl.innerHTML = "";
-      tables.forEach(function (t) {
+      
+      if (floor.canvas_mode) {
+          gridEl.style.display = "block";
+          gridEl.style.position = "relative";
+          gridEl.style.height = "600px";
+          gridEl.style.background = "#f9f8f6";
+          gridEl.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)";
+          gridEl.style.backgroundSize = "20px 20px";
+          gridEl.style.border = "1px solid var(--border)";
+          gridEl.style.borderRadius = "8px";
+          gridEl.style.overflow = "auto";
+      } else {
+          gridEl.style = ""; // Reset styles
+      }
+      
+      floor.tables.forEach(function (t) {
         var cell = document.createElement("div");
         cell.className = "floor-table" + (t.locked ? " locked" : t.occupied ? " occupied" : "");
         cell.title = t.locked ? "Table locked — guests still dining. Click to unlock." : t.occupied ? "Has active order" : "";
+        
+        if (floor.canvas_mode) {
+            cell.style.position = "absolute";
+            cell.style.left = t.pos_x + "px";
+            cell.style.top = t.pos_y + "px";
+            cell.style.width = Math.max(40, t.width) + "px";
+            cell.style.height = Math.max(40, t.height) + "px";
+            cell.style.margin = "0"; // Override grid margins
+            cell.style.padding = "4px"; // Reduce padding for small custom sizes
+            cell.style.borderRadius = (t.shape === "circle") ? "50%" : "8px";
+        }
 
         if (t.locked) {
           cell.innerHTML =

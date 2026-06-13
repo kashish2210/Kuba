@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 
 from cafe_pos.models import (
     CafeTable,
+    ChatAssistantSettings,
     Coupon,
     Floor,
     Customer,
@@ -286,4 +287,29 @@ class ReceiptSettingsForm(StyledFormMixin, forms.ModelForm):
                 "style": "font-family:ui-monospace,Consolas,monospace;",
             }),
             "smtp_password": forms.PasswordInput(render_value=True),
+        }
+
+
+class ChatAssistantSettingsForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = ChatAssistantSettings
+        fields = [
+            "is_enabled", "bot_name", "welcome_message",
+            "gemini_api_key", "gemini_model",
+            "groq_api_key", "groq_model",
+            "custom_instructions", "terms_and_conditions",
+        ]
+        widgets = {
+            "gemini_api_key": forms.PasswordInput(render_value=True),
+            "groq_api_key": forms.PasswordInput(render_value=True),
+            "welcome_message": forms.Textarea(attrs={"rows": 2}),
+            "custom_instructions": forms.Textarea(attrs={"rows": 4}),
+            "terms_and_conditions": forms.Textarea(attrs={"rows": 6}),
+        }
+        help_texts = {
+            "bot_name": "Displayed to customers in the chat and in emails.",
+            "custom_instructions": "Extra guidance for the AI, e.g. 'Always mention our specials.'",
+            "terms_and_conditions": "If filled, customers must accept these before chatting. Leave blank to skip.",
+            "gemini_api_key": "Google AI Studio key. Used first; leave blank to skip Gemini.",
+            "groq_api_key": "Groq key. Used as fallback if Gemini is unavailable.",
         }

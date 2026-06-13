@@ -125,6 +125,73 @@ def email_receipt(order, to_email, request=None):
         return False
 
 
+def email_chat_invite(order, to_email, session_token, request=None):
+    """Send a post-order email inviting the customer to chat with the AI assistant."""
+    if not to_email:
+        return False
+    cafe = order.cafe
+
+    if request is not None:
+        session_url = request.build_absolute_uri(f"/session/{session_token}/")
+    else:
+        session_url = cafe.dashboard_url().rstrip("/") + f"/session/{session_token}/"
+
+    try:
+        from .models import ChatAssistantSettings
+        assistant = ChatAssistantSettings.objects.filter(cafe=cafe).first()
+        bot_name = assistant.bot_name if assistant else "Assistant"
+    except Exception:
+        bot_name = "Assistant"
+
+    customer_name = order.customer.name if order.customer_id else "there"
+
+    html = f"""
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;border-radius:14px;overflow:hidden;border:1px solid #eadfce;">
+      <div style="background:#2c1e0f;color:#fff;padding:24px 28px;">
+        <h1 style="margin:0;font-size:1.25rem;">{cafe.name}</h1>
+        <p style="margin:6px 0 0;opacity:.75;">Your order is being prepared!</p>
+      </div>
+      <div style="background:#fff;padding:24px 28px;">
+        <p style="margin:0 0 12px;">Hi <strong>{customer_name}</strong>,</p>
+        <p style="margin:0 0 12px;">
+          Your order <strong>#{order.order_number}</strong> has been received.
+          While you wait, <strong>{bot_name}</strong> — our AI menu assistant — is here to help.
+        </p>
+        <p style="margin:0 0 20px;">
+          Ask about ingredients, get recommendations, explore our full menu, or just say hi!
+        </p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="{session_url}"
+             style="display:inline-block;padding:14px 32px;background:#c8903e;color:#fff;
+                    text-decoration:none;border-radius:10px;font-weight:700;font-size:1rem;">
+            Chat with {bot_name} &rarr;
+          </a>
+        </div>
+        <p style="color:#999;font-size:.8rem;margin:0;">
+          This link is unique to your order. The conversation is private and can be deleted on request.
+        </p>
+      </div>
+    </div>
+    """
+
+    try:
+        connection, from_email = _cafe_connection(cafe)
+        subject = f"Your order #{order.order_number} is being prepared — chat with us! 🍽"
+        msg = EmailMultiAlternatives(
+            subject,
+            f"Hi {customer_name}, your order #{order.order_number} is being prepared. "
+            f"Chat with {bot_name}: {session_url}",
+            from_email,
+            [to_email],
+            connection=connection,
+        )
+        msg.attach_alternative(html, "text/html")
+        msg.send(fail_silently=False)
+        return True
+    except Exception:
+        return False
+
+
 def email_feedback(order, to_email, request=None):
     if not to_email:
         return False

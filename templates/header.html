@@ -156,6 +156,13 @@
         </a>
         
         <div class="sidebar-section-label">Feedback</div>
+        <a href="{% url 'dashboard:assistant-settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'assistant-settings' or request.resolver_match.url_name == 'assistant-sessions' or request.resolver_match.url_name == 'assistant-session-detail' %}active{% endif %}" id="nav-assistant">
+            <svg viewBox="0 0 24 24">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="10" r="1"/><circle cx="8" cy="10" r="1"/><circle cx="16" cy="10" r="1"/>
+            </svg>
+            AI Assistant
+        </a>
         <a href="{% url 'dashboard:feedback-settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'feedback-settings' %}active{% endif %}" id="nav-feedback-settings">
             <svg viewBox="0 0 24 24">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>

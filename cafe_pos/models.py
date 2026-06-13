@@ -88,6 +88,7 @@ class Floor(models.Model):
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="floors")
     name = models.CharField(max_length=100)
     sort_order = models.PositiveIntegerField(default=0, help_text="Lower number appears first.")
+    canvas_mode = models.BooleanField(default=False, help_text="If true, displays tables on an interactive grid canvas instead of a list.")
 
     class Meta:
         ordering = ["sort_order", "name"]
@@ -104,6 +105,13 @@ class CafeTable(models.Model):
     seats = models.PositiveIntegerField(validators=[MinValueValidator(1)], default=4)
     is_active = models.BooleanField(default=True)
     is_occupied = models.BooleanField(default=False, help_text="Locked by staff until table is manually cleared.")
+    
+    # Spatial fields for canvas mode
+    pos_x = models.FloatField(default=0.0)
+    pos_y = models.FloatField(default=0.0)
+    width = models.FloatField(default=100.0)
+    height = models.FloatField(default=100.0)
+    shape = models.CharField(max_length=20, default="rect", choices=[("rect", "Rectangle"), ("circle", "Circle")])
 
     class Meta:
         ordering = ["sort_order", "id"]
@@ -462,6 +470,78 @@ class FeedbackResponse(models.Model):
 
     def __str__(self):
         return f"Response to {self.question.question_text}"
+
+
+class ChatAssistantSettings(models.Model):
+    """Per-cafe AI chat assistant configuration."""
+
+    cafe = models.OneToOneField("tenants.Cafe", on_delete=models.CASCADE, related_name="chat_assistant_settings")
+    is_enabled = models.BooleanField(default=False)
+    bot_name = models.CharField(max_length=100, default="Assistant")
+    welcome_message = models.TextField(
+        blank=True,
+        default="Hi! I'm your assistant. Ask me anything about our menu.",
+    )
+    custom_instructions = models.TextField(blank=True, help_text="Extra instructions for the AI (e.g. tone, topics to avoid).")
+    gemini_api_key = models.CharField(max_length=200, blank=True)
+    gemini_model = models.CharField(max_length=100, default="gemini-2.5-flash")
+    groq_api_key = models.CharField(max_length=200, blank=True)
+    groq_model = models.CharField(max_length=100, default="llama-3.1-8b-instant")
+    product_data_json = models.TextField(blank=True, help_text="Auto-generated menu snapshot fed to the AI.")
+    last_scraped_at = models.DateTimeField(null=True, blank=True)
+    terms_and_conditions = models.TextField(
+        blank=True,
+        help_text="Terms customers must accept before chatting. Leave blank to skip the T&C step.",
+    )
+
+    class Meta:
+        verbose_name = "Chat assistant settings"
+        verbose_name_plural = "Chat assistant settings"
+
+    def __str__(self):
+        return f"Chat assistant — {self.cafe.name}"
+
+
+class ChatSession(models.Model):
+    """A public chat session created when an order is paid and emailed to the customer."""
+
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="chat_sessions")
+    order = models.ForeignKey(
+        "Order", on_delete=models.SET_NULL, null=True, blank=True, related_name="chat_sessions",
+    )
+    session_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    customer_name = models.CharField(max_length=150, blank=True)
+    customer_email = models.EmailField(max_length=255, blank=True)
+    terms_accepted = models.BooleanField(default=False)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        label = self.customer_name or self.customer_email or str(self.session_token)[:8]
+        return f"Chat {label}"
+
+    def message_count(self):
+        return self.messages.count()
+
+
+class ChatMessage(models.Model):
+    class Role(models.TextChoices):
+        USER = "user", "User"
+        ASSISTANT = "assistant", "Assistant"
+
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
+    role = models.CharField(max_length=10, choices=Role.choices)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.role}: {self.content[:60]}"
 
 
 class ReceiptSettings(models.Model):

@@ -13,6 +13,7 @@
     }
     .floor-tab:hover { background:var(--surface,#fff); }
     .floor-tab.active { background:var(--primary,#2c3e50); color:#fff; }
+    
     .table-grid {
         display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
         gap:16px; margin-top:8px;
@@ -31,10 +32,12 @@
     .table-card .t-seats { font-size:0.75rem; color:var(--text-muted,#888); }
     .table-card.occupied { background:#fef3c7; border-color:#f59e0b; }
     .table-card.locked { background:#fee2e2; border-color:#ef4444; }
+    
     .t-status-dot { width:8px; height:8px; border-radius:50%; position:absolute; bottom:8px; left:50%; transform:translateX(-50%); }
     .t-status-dot.free { background:#22c55e; }
     .t-status-dot.busy { background:#f59e0b; }
     .t-status-dot.locked { background:#ef4444; }
+    
     .table-card .t-handle {
         position:absolute; top:8px; left:8px; display:flex; align-items:center; justify-content:center;
         width:24px; height:24px; border-radius:6px; font-size:13px; color:var(--text-muted,#888);
@@ -49,6 +52,7 @@
         border-radius:6px;border:none;background:rgba(0,0,0,0.06);color:#444;cursor:pointer;font-size:12px;
     }
     .t-actions button:hover { background:rgba(231,76,60,0.15); color:#c0392b; }
+    
     .add-card {
         aspect-ratio:1/1; border-radius:14px; border:2px dashed var(--border,#cfc8bd);
         background:transparent; display:flex; align-items:center; justify-content:center;
@@ -61,6 +65,75 @@
     details.panel summary { cursor:pointer; font-weight:600; color:var(--primary,#2c3e50); }
     .row-form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px; }
     .floor-tab.drop-target { border-color:var(--primary,#2c3e50); background:rgba(44,62,80,.08); }
+
+    /* CANVAS MODE CSS */
+    .canvas-container {
+        position: relative;
+        width: 100%;
+        height: 600px;
+        background-color: #f9f8f6;
+        background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .canvas-table {
+        position: absolute;
+        background: var(--surface-alt);
+        border: 2px solid var(--primary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: move;
+        user-select: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: box-shadow 0.1s;
+    }
+    .canvas-table:active {
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        z-index: 100;
+    }
+    .canvas-table.locked { background: #fee2e2; border-color: #ef4444; }
+    .canvas-table.occupied { background: #fef3c7; border-color: #f59e0b; }
+    
+    .canvas-table .c-num { font-size: 1.2rem; font-weight: 800; color: var(--ink); pointer-events: none; }
+    .canvas-table .c-seats { font-size: 0.7rem; color: var(--muted); pointer-events: none; }
+    
+    .resize-handle {
+        position: absolute;
+        bottom: 0; right: 0;
+        width: 15px; height: 15px;
+        cursor: se-resize;
+        background: var(--primary);
+        clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    }
+    
+    .canvas-actions {
+        position: absolute; top: 4px; right: 4px; display: flex; gap: 4px; opacity: 0;
+    }
+    .canvas-table:hover .canvas-actions { opacity: 1; }
+    
+    .ghost {
+        position: absolute;
+        z-index: 1000;
+        background: rgba(44, 62, 80, 0.2);
+        box-shadow: inset 0 0 0 2px var(--primary);
+        pointer-events: none;
+    }
+    
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 9999;
+        display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+        background: #fff; padding: 24px; border-radius: 12px;
+        width: 100%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
 </style>
 {% endblock %}
 
@@ -89,6 +162,10 @@
                 <label class="form-label">Order</label>
                 <input class="form-input" type="number" name="sort_order" value="0">
             </div>
+            <div class="form-group" style="margin:0; display:flex; align-items:center;">
+                <input type="checkbox" name="canvas_mode" id="new_floor_canvas_mode" style="width:auto; margin-right:6px;">
+                <label for="new_floor_canvas_mode" style="margin:0; font-weight:600; cursor:pointer;">Grid Mode</label>
+            </div>
             <button type="submit" class="btn btn-primary">Add floor</button>
         </form>
     </details>
@@ -98,7 +175,7 @@
 <div class="card">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
         {% if edit_floor %}
-            <form method="post" action="{% url 'dashboard:floor-update' active_floor.id %}" class="row-form" style="margin:0;">
+            <form method="post" action="{% url 'dashboard:floor-update' active_floor.id %}" class="row-form" style="margin:0; width:100%;">
                 {% csrf_token %}
                 <div class="form-group" style="margin:0;">{{ floor_form.name }}</div>
                 <div class="form-group" style="margin:0;max-width:110px;">{{ floor_form.sort_order }}</div>
@@ -107,8 +184,12 @@
             </form>
         {% else %}
             <h3 class="card-title">{{ active_floor.name }} <span class="text-muted text-sm">· {{ tables|length }} table{{ tables|length|pluralize }}</span></h3>
-            <div style="display:flex;gap:8px;">
-                <a href="?floor={{ active_floor.id }}&edit_floor=1" class="btn btn-secondary btn-sm">Rename</a>
+            <div style="display:flex;gap:8px;align-items:center;">
+                {% if active_floor.canvas_mode %}
+                    <span style="background:#e7f6ec; color:#15803d; padding:4px 8px; border-radius:6px; font-size:0.8rem; font-weight:bold; margin-right:8px;">Canvas Mode Enabled</span>
+                    <button class="btn btn-primary btn-sm" onclick="saveCanvasLayout()">Save Layout</button>
+                {% endif %}
+                <a href="?floor={{ active_floor.id }}&edit_floor=1" class="btn btn-secondary btn-sm">Rename / Options</a>
                 <form method="post" action="{% url 'dashboard:floor-delete' active_floor.id %}" onsubmit="return confirm('Delete this floor and all its tables?');" style="display:inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger btn-sm">Delete floor</button>
@@ -116,70 +197,143 @@
             </div>
         {% endif %}
     </div>
+    
     <div class="card-body">
-        <div class="table-grid" data-floor-grid data-floor-id="{{ active_floor.id }}">
-            {% for t in tables %}
-                {% if edit_table and t.id == edit_table.id %}
-                    <div class="table-card" style="aspect-ratio:auto;">
-                        <form method="post" action="{% url 'dashboard:table-update' t.id %}" class="inline-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="floor" value="{{ active_floor.id }}">
-                            <label class="form-label text-xs">Number</label>
-                            <input class="form-input" type="text" name="table_number" value="{{ t.table_number }}" required>
-                            <label class="form-label text-xs">Seats</label>
-                            <input class="form-input" type="number" name="seats" value="{{ t.seats }}" min="1" required>
-                            <label class="text-xs" style="display:flex;gap:6px;align-items:center;">
-                                <input type="checkbox" name="is_active" {% if t.is_active %}checked{% endif %}> Active
-                            </label>
-                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
-                            <a href="?floor={{ active_floor.id }}" class="btn btn-ghost btn-sm">Cancel</a>
-                        </form>
-                    </div>
-                {% else %}
-                    <div class="table-card {% if not t.is_active %}inactive{% endif %} {% if t.is_occupied %}locked{% elif t.id in occupied_table_ids %}occupied{% endif %}"
-                         draggable="true"
-                         data-table-card
-                         data-table-id="{{ t.id }}"
-                         data-floor-id="{{ active_floor.id }}"
-                         title="{% if t.is_occupied %}Table locked — guests dining{% elif t.id in occupied_table_ids %}Has active order{% else %}Drag to reorder{% endif %}">
-                        <div class="t-handle">⠿</div>
-                        <div class="t-actions">
-                            {% if t.is_occupied %}
-                            <form method="post" action="{% url 'pos:table-release' t.id %}"
-                                  onsubmit="return confirm('Mark table {{ t.table_number }} as empty? Only do this after guests have left.');"
-                                  style="display:inline;">
+        {% if active_floor.canvas_mode %}
+            <!-- CANVAS MODE -->
+            <div class="canvas-container" id="floor-canvas">
+                {% for t in tables %}
+                    {% if edit_table and t.id == edit_table.id %}
+                        <!-- Inline Edit form floating on canvas -->
+                        <div style="position:absolute; z-index:200; background:#fff; padding:15px; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.2); left:{{t.pos_x}}px; top:{{t.pos_y}}px;">
+                            <form method="post" action="{% url 'dashboard:table-update' t.id %}" class="inline-form" style="padding:0;">
                                 {% csrf_token %}
-                                <button type="submit" title="Mark as empty" style="background:rgba(239,68,68,.15);color:#b91c1c;font-size:10px;width:auto;padding:0 5px;font-weight:700;">Empty</button>
+                                <input type="hidden" name="floor" value="{{ active_floor.id }}">
+                                <label class="form-label text-xs">Number</label>
+                                <input class="form-input" type="text" name="table_number" value="{{ t.table_number }}" required>
+                                <label class="form-label text-xs">Seats</label>
+                                <input class="form-input" type="number" name="seats" value="{{ t.seats }}" min="1" required>
+                                <label class="form-label text-xs">Shape</label>
+                                <select class="form-input" name="shape">
+                                    <option value="rect" {% if t.shape == 'rect' %}selected{% endif %}>Rectangle</option>
+                                    <option value="circle" {% if t.shape == 'circle' %}selected{% endif %}>Circle</option>
+                                </select>
+                                <div style="display:flex; gap:8px; margin-top:8px;">
+                                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                    <a href="?floor={{ active_floor.id }}" class="btn btn-ghost btn-sm">Cancel</a>
+                                </div>
                             </form>
-                            {% else %}
-                            <a href="?floor={{ active_floor.id }}&edit_table={{ t.id }}" title="Edit">✎</a>
-                            <form method="post" action="{% url 'dashboard:table-delete' t.id %}" onsubmit="return confirm('Delete table {{ t.table_number }}?');" style="display:inline;">
-                                {% csrf_token %}
-                                <button type="submit" title="Delete">✕</button>
-                            </form>
-                            {% endif %}
                         </div>
-                        <div class="t-num">{{ t.table_number }}</div>
-                        <div class="t-seats">{{ t.seats }} seat{{ t.seats|pluralize }}</div>
-                        <div class="t-status-dot {% if t.is_occupied %}locked{% elif t.id in occupied_table_ids %}busy{% else %}free{% endif %}"></div>
+                    {% else %}
+                        <div class="canvas-table {% if t.is_occupied %}locked{% elif t.id in occupied_table_ids %}occupied{% endif %}"
+                             id="table-{{ t.id }}"
+                             data-id="{{ t.id }}"
+                             style="left: {{ t.pos_x }}px; top: {{ t.pos_y }}px; width: {{ t.width }}px; height: {{ t.height }}px; border-radius: {% if t.shape == 'circle' %}50%{% else %}8px{% endif %};">
+                             
+                            <div class="c-num">{{ t.table_number }}</div>
+                            <div class="c-seats">{{ t.seats }}</div>
+                            
+                            <div class="canvas-actions">
+                                <a href="?floor={{ active_floor.id }}&edit_table={{ t.id }}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10px;">✎</a>
+                                <form method="post" action="{% url 'dashboard:table-delete' t.id %}" onsubmit="return confirm('Delete table?');" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:10px;">✕</button>
+                                </form>
+                            </div>
+                            
+                            <div class="resize-handle"></div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="ghost" id="draw-ghost" style="display:none; width:0; height:0;"></div>
+            </div>
+            <p class="text-muted text-sm mt-2" style="text-align:right;">Drag on the grid to draw a new table. Drag tables to move. Drag the corner to resize. Click "Save Layout" when done.</p>
+            
+            <!-- Table Creation Modal -->
+            <div class="modal-overlay" id="create-table-modal">
+                <div class="modal-content">
+                    <h3 style="margin:0 0 16px 0; font-size:1.2rem;">Create Table</h3>
+                    <div class="form-group">
+                        <label class="form-label">Table Number</label>
+                        <input type="text" id="new-table-num" class="form-input" placeholder="e.g. 12" style="width:100%;" autocomplete="off">
                     </div>
-                {% endif %}
-            {% endfor %}
-
-            <!-- Add table -->
-            <details class="add-card" style="aspect-ratio:auto;align-items:stretch;justify-content:flex-start;padding:0;">
-                <summary class="add-card" style="border:none;list-style:none;">+</summary>
-                <form method="post" action="{% url 'dashboard:table-create' %}" class="inline-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="floor" value="{{ active_floor.id }}">
-                    <label class="form-label text-xs">Number</label>
-                    <input class="form-input" type="text" name="table_number" placeholder="e.g. 17" required>
-                    <label class="form-label text-xs">Seats</label>
-                    <input class="form-input" type="number" name="seats" value="4" min="1" required>
-                    <button type="submit" class="btn btn-primary btn-sm">Add table</button>
-                </form>
-            </details>
-        </div>
+                    <div class="form-group">
+                        <label class="form-label">Seats</label>
+                        <input type="number" id="new-table-seats" class="form-input" value="4" min="1" style="width:100%;">
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+                        <button class="btn btn-ghost" id="cancel-create-btn">Cancel</button>
+                        <button class="btn btn-primary" id="confirm-create-btn">Create</button>
+                    </div>
+                </div>
+            </div>
+            
+        {% else %}
+            <!-- LIST MODE -->
+            <div class="table-grid" data-floor-grid data-floor-id="{{ active_floor.id }}">
+                {% for t in tables %}
+                    {% if edit_table and t.id == edit_table.id %}
+                        <div class="table-card" style="aspect-ratio:auto;">
+                            <form method="post" action="{% url 'dashboard:table-update' t.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="floor" value="{{ active_floor.id }}">
+                                <label class="form-label text-xs">Number</label>
+                                <input class="form-input" type="text" name="table_number" value="{{ t.table_number }}" required>
+                                <label class="form-label text-xs">Seats</label>
+                                <input class="form-input" type="number" name="seats" value="{{ t.seats }}" min="1" required>
+                                <label class="text-xs" style="display:flex;gap:6px;align-items:center;">
+                                    <input type="checkbox" name="is_active" {% if t.is_active %}checked{% endif %}> Active
+                                </label>
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                <a href="?floor={{ active_floor.id }}" class="btn btn-ghost btn-sm">Cancel</a>
+                            </form>
+                        </div>
+                    {% else %}
+                        <div class="table-card {% if not t.is_active %}inactive{% endif %} {% if t.is_occupied %}locked{% elif t.id in occupied_table_ids %}occupied{% endif %}"
+                             draggable="true"
+                             data-table-card
+                             data-table-id="{{ t.id }}"
+                             data-floor-id="{{ active_floor.id }}"
+                             title="{% if t.is_occupied %}Table locked — guests dining{% elif t.id in occupied_table_ids %}Has active order{% else %}Drag to reorder{% endif %}">
+                            <div class="t-handle">⠿</div>
+                            <div class="t-actions">
+                                {% if t.is_occupied %}
+                                <form method="post" action="{% url 'pos:table-release' t.id %}"
+                                      onsubmit="return confirm('Mark table {{ t.table_number }} as empty? Only do this after guests have left.');"
+                                      style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" title="Mark as empty" style="background:rgba(239,68,68,.15);color:#b91c1c;font-size:10px;width:auto;padding:0 5px;font-weight:700;">Empty</button>
+                                </form>
+                                {% else %}
+                                <a href="?floor={{ active_floor.id }}&edit_table={{ t.id }}" title="Edit">✎</a>
+                                <form method="post" action="{% url 'dashboard:table-delete' t.id %}" onsubmit="return confirm('Delete table {{ t.table_number }}?');" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" title="Delete">✕</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            <div class="t-num">{{ t.table_number }}</div>
+                            <div class="t-seats">{{ t.seats }} seat{{ t.seats|pluralize }}</div>
+                            <div class="t-status-dot {% if t.is_occupied %}locked{% elif t.id in occupied_table_ids %}busy{% else %}free{% endif %}"></div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+    
+                <!-- Add table -->
+                <details class="add-card" style="aspect-ratio:auto;align-items:stretch;justify-content:flex-start;padding:0;">
+                    <summary class="add-card" style="border:none;list-style:none;">+</summary>
+                    <form method="post" action="{% url 'dashboard:table-create' %}" class="inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="floor" value="{{ active_floor.id }}">
+                        <label class="form-label text-xs">Number</label>
+                        <input class="form-input" type="text" name="table_number" placeholder="e.g. 17" required>
+                        <label class="form-label text-xs">Seats</label>
+                        <input class="form-input" type="number" name="seats" value="4" min="1" required>
+                        <button type="submit" class="btn btn-primary btn-sm">Add table</button>
+                    </form>
+                </details>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% else %}
@@ -198,6 +352,203 @@
 {% block extra_js %}
 <script>
 (function() {
+    {% if active_floor.canvas_mode %}
+    // CANVAS MODE LOGIC
+    const container = document.getElementById('floor-canvas');
+    if (!container) return;
+    
+    const tables = container.querySelectorAll('.canvas-table');
+    const ghost = document.getElementById('draw-ghost');
+    const createModal = document.getElementById('create-table-modal');
+    const numInput = document.getElementById('new-table-num');
+    const seatsInput = document.getElementById('new-table-seats');
+    const cancelBtn = document.getElementById('cancel-create-btn');
+    const confirmBtn = document.getElementById('confirm-create-btn');
+    
+    let isDraggingTable = false;
+    let isResizingTable = false;
+    let isDrawing = false;
+    let currentElement = null;
+    let startX, startY;
+    let initialX, initialY, initialWidth, initialHeight;
+    let drawStartX, drawStartY;
+
+    // --- Table Drag & Resize ---
+    tables.forEach(table => {
+        const resizeHandle = table.querySelector('.resize-handle');
+        
+        resizeHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            isResizingTable = true;
+            currentElement = table;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialWidth = parseInt(getComputedStyle(table).width, 10);
+            initialHeight = parseInt(getComputedStyle(table).height, 10);
+        });
+
+        table.addEventListener('mousedown', (e) => {
+            if (e.target === resizeHandle || e.target.closest('.canvas-actions')) return;
+            e.stopPropagation();
+            isDraggingTable = true;
+            currentElement = table;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialX = parseInt(table.style.left || 0, 10);
+            initialY = parseInt(table.style.top || 0, 10);
+        });
+    });
+
+    // --- Grid Draw Selection ---
+    container.addEventListener('mousedown', (e) => {
+        if (e.target !== container) return; // Only start draw if clicking empty grid
+        isDrawing = true;
+        const rect = container.getBoundingClientRect();
+        drawStartX = e.clientX - rect.left;
+        drawStartY = e.clientY - rect.top;
+        
+        // Snap start to 20px
+        drawStartX = Math.round(drawStartX / 20) * 20;
+        drawStartY = Math.round(drawStartY / 20) * 20;
+        
+        ghost.style.display = 'block';
+        ghost.style.left = drawStartX + 'px';
+        ghost.style.top = drawStartY + 'px';
+        ghost.style.width = '0px';
+        ghost.style.height = '0px';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isDraggingTable && currentElement) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            let newX = Math.round((initialX + dx) / 20) * 20;
+            let newY = Math.round((initialY + dy) / 20) * 20;
+            newX = Math.max(0, Math.min(newX, container.offsetWidth - parseInt(getComputedStyle(currentElement).width, 10)));
+            newY = Math.max(0, Math.min(newY, container.offsetHeight - parseInt(getComputedStyle(currentElement).height, 10)));
+            currentElement.style.left = newX + 'px';
+            currentElement.style.top = newY + 'px';
+        } 
+        else if (isResizingTable && currentElement) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            let newWidth = Math.round((initialWidth + dx) / 20) * 20;
+            let newHeight = Math.round((initialHeight + dy) / 20) * 20;
+            newWidth = Math.max(40, newWidth);
+            newHeight = Math.max(40, newHeight);
+            currentElement.style.width = newWidth + 'px';
+            currentElement.style.height = newHeight + 'px';
+        }
+        else if (isDrawing) {
+            const rect = container.getBoundingClientRect();
+            let currentX = e.clientX - rect.left;
+            let currentY = e.clientY - rect.top;
+            
+            // Constrain to container
+            currentX = Math.max(0, Math.min(currentX, container.offsetWidth));
+            currentY = Math.max(0, Math.min(currentY, container.offsetHeight));
+            
+            // Snap to 20px
+            currentX = Math.round(currentX / 20) * 20;
+            currentY = Math.round(currentY / 20) * 20;
+            
+            const w = Math.abs(currentX - drawStartX);
+            const h = Math.abs(currentY - drawStartY);
+            
+            ghost.style.width = w + 'px';
+            ghost.style.height = h + 'px';
+            
+            if (currentX < drawStartX) ghost.style.left = currentX + 'px';
+            if (currentY < drawStartY) ghost.style.top = currentY + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDrawing) {
+            isDrawing = false;
+            const w = parseInt(ghost.style.width, 10) || 0;
+            const h = parseInt(ghost.style.height, 10) || 0;
+            
+            if (w >= 40 && h >= 40) {
+                // Minimum size met, prompt to create table
+                numInput.value = '';
+                createModal.classList.add('active');
+                setTimeout(() => numInput.focus(), 100);
+            } else {
+                ghost.style.display = 'none';
+            }
+        }
+        isDraggingTable = false;
+        isResizingTable = false;
+        currentElement = null;
+    });
+    
+    // --- Create Table Modal Actions ---
+    cancelBtn.addEventListener('click', () => {
+        createModal.classList.remove('active');
+        ghost.style.display = 'none';
+    });
+    
+    confirmBtn.addEventListener('click', () => {
+        const num = numInput.value.trim();
+        const seats = parseInt(seatsInput.value, 10) || 4;
+        if (!num) return alert("Please enter a table number.");
+        
+        const payload = {
+            floor_id: {{ active_floor.id }},
+            table_number: num,
+            seats: seats,
+            pos_x: parseInt(ghost.style.left, 10),
+            pos_y: parseInt(ghost.style.top, 10),
+            width: parseInt(ghost.style.width, 10),
+            height: parseInt(ghost.style.height, 10)
+        };
+        
+        const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        
+        fetch("{% url 'dashboard:table-create-ajax' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(data => {
+            if (data.ok) {
+                window.location.reload(); // Reload to show the new table and forms cleanly
+            } else {
+                alert("Error creating table: " + data.message);
+            }
+        }).catch(err => {
+            alert("Network error.");
+        });
+    });
+    
+    // --- Save Layout ---
+    window.saveCanvasLayout = function() {
+        const payload = { tables: [] };
+        container.querySelectorAll('.canvas-table').forEach(table => {
+            payload.tables.push({
+                id: table.getAttribute('data-id'),
+                pos_x: parseInt(table.style.left || 0, 10),
+                pos_y: parseInt(table.style.top || 0, 10),
+                width: parseInt(getComputedStyle(table).width, 10),
+                height: parseInt(getComputedStyle(table).height, 10),
+                shape: getComputedStyle(table).borderRadius.includes('50%') ? 'circle' : 'rect'
+            });
+        });
+        
+        const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        
+        fetch("{% url 'dashboard:floor-save-plan' active_floor.id %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(data => {
+            if (data.ok) alert("Layout saved successfully!");
+            else alert("Error: " + data.message);
+        });
+    }
+
+    {% else %}
+    // LIST MODE REORDER LOGIC
     const moveUrl = "{% url 'dashboard:table-move' %}";
     const csrfToken = document.cookie.split('; ').find(function(item) {
         return item.startsWith('csrftoken=');
@@ -206,30 +557,18 @@
     const grid = document.querySelector('[data-floor-grid]');
     const floorTabs = Array.from(document.querySelectorAll('[data-floor-tab]'));
     const tableCards = Array.from(document.querySelectorAll('[data-table-card]'));
-    if (!grid || !floorTabs.length || !tableCards.length) {
-        return;
-    }
+    if (!grid || !floorTabs.length || !tableCards.length) return;
 
     let draggedId = null;
 
     async function moveTable(payload) {
         const response = await fetch(moveUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken || '',
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' },
             body: JSON.stringify(payload),
         });
-
-        const data = await response.json().catch(function() {
-            return { ok: false, message: 'Invalid server response.' };
-        });
-
-        if (!response.ok || !data.ok) {
-            throw new Error(data.message || 'Could not move table.');
-        }
-
+        const data = await response.json().catch(function() { return { ok: false, message: 'Invalid server response.' }; });
+        if (!response.ok || !data.ok) throw new Error(data.message || 'Could not move table.');
         window.location.href = data.redirect_url || window.location.href;
     }
 
@@ -249,86 +588,36 @@
             grid.classList.remove('drop-target');
         });
 
-        card.addEventListener('dragover', function(event) {
-            event.preventDefault();
-            card.classList.add('drag-over');
-        });
-
-        card.addEventListener('dragleave', function() {
-            card.classList.remove('drag-over');
-        });
+        card.addEventListener('dragover', function(event) { event.preventDefault(); card.classList.add('drag-over'); });
+        card.addEventListener('dragleave', function() { card.classList.remove('drag-over'); });
 
         card.addEventListener('drop', function(event) {
             event.preventDefault();
             event.stopPropagation();
             card.classList.remove('drag-over');
-            if (!draggedId || draggedId === card.dataset.tableId) {
-                return;
-            }
+            if (!draggedId || draggedId === card.dataset.tableId) return;
             moveTable({
                 table_id: draggedId,
                 target_floor_id: card.dataset.floorId,
                 swap_table_id: card.dataset.tableId,
-            }).catch(function(error) {
-                alert(error.message);
-            });
+            }).catch(function(error) { alert(error.message); });
         });
     });
 
-    grid.addEventListener('dragover', function(event) {
-        event.preventDefault();
-        grid.classList.add('drop-target');
-    });
-
+    grid.addEventListener('dragover', function(event) { event.preventDefault(); grid.classList.add('drop-target'); });
     grid.addEventListener('dragleave', function(event) {
-        if (!grid.contains(event.relatedTarget)) {
-            grid.classList.remove('drop-target');
-        }
+        if (!grid.contains(event.relatedTarget)) grid.classList.remove('drop-target');
     });
 
     grid.addEventListener('drop', function(event) {
         event.preventDefault();
-        if (event.target.closest('[data-table-card]')) {
-            return;
-        }
+        if (event.target.closest('[data-table-card]')) return;
         grid.classList.remove('drop-target');
-        if (!draggedId) {
-            return;
-        }
-        moveTable({
-            table_id: draggedId,
-            target_floor_id: grid.dataset.floorId,
-            before_table_id: null,
-        }).catch(function(error) {
-            alert(error.message);
-        });
+        if (!draggedId) return;
+        moveTable({ table_id: draggedId, target_floor_id: grid.dataset.floorId, before_table_id: null })
+            .catch(function(error) { alert(error.message); });
     });
-
-    floorTabs.forEach(function(tab) {
-        tab.addEventListener('dragover', function(event) {
-            event.preventDefault();
-            tab.classList.add('drop-target');
-        });
-
-        tab.addEventListener('dragleave', function() {
-            tab.classList.remove('drop-target');
-        });
-
-        tab.addEventListener('drop', function(event) {
-            event.preventDefault();
-            tab.classList.remove('drop-target');
-            if (!draggedId) {
-                return;
-            }
-            moveTable({
-                table_id: draggedId,
-                target_floor_id: tab.dataset.floorId,
-                before_table_id: null,
-            }).catch(function(error) {
-                alert(error.message);
-            });
-        });
-    });
+    {% endif %}
 })();
 </script>
 {% endblock %}
