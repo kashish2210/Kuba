@@ -29,7 +29,7 @@
     {% if products %}
     <form id="bulk-action-form" method="post" action="{% url 'dashboard:product-bulk-action' %}">
         {% csrf_token %}
-        <div id="bulk-action-bar" style="display:none; padding: 12px; background: #fff5f2; border: 2px dashed #f5b7b1; border-radius: 12px; margin-bottom: 16px; align-items: center; justify-content: space-between;">
+        <div id="bulk-action-bar" style="display:none; padding: 12px; background: #fff5f2; border: 2px dashed #f5b7b1; border-radius: 12px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div style="font-weight:bold; color: #d35400;"><span id="sel-count">0</span> products selected</div>
             <div style="display:flex;gap:8px;">
                 <button type="submit" name="action" value="archive" class="btn btn-secondary btn-sm" onclick="return confirm('Archive selected products?');">Archive</button>
@@ -44,31 +44,33 @@
             <tbody>
         {% for p in products %}
             <tr>
-                <td><input type="checkbox" name="product_ids" value="{{ p.id }}" class="row-check"></td>
-                <td>
+                <td data-label="Select"><input type="checkbox" name="product_ids" value="{{ p.id }}" class="row-check"></td>
+                <td data-label="Name">
                     <div style="display:flex;align-items:center;gap:10px;">
                         {% if p.image %}
                             <img src="{{ p.image.url }}" alt="{{ p.name }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
                         {% else %}
                             <span style="width:40px;height:40px;border-radius:8px;background:var(--surface-alt,#eee);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🍽️</span>
                         {% endif %}
-                        <span><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></span>
+                        <span style="text-align:left;"><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></span>
                     </div>
                 </td>
-                <td>
+                <td data-label="Category">
                     <span class="badge" style="background:{{ p.category.color }}22;color:{{ p.category.color }};border:1px solid {{ p.category.color }};">{{ p.category.name }}</span>
                 </td>
-                <td>{{ p.price }}</td>
-                <td>{{ p.tax_percentage }}%</td>
-                <td>
+                <td data-label="Price">{{ p.price }}</td>
+                <td data-label="Tax">{{ p.tax_percentage }}%</td>
+                <td data-label="Status">
                     {% if p.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-neutral">Hidden</span>{% endif %}
                 </td>
-                <td class="text-right">
-                    <a href="{% url 'dashboard:product-update' p.id %}" class="btn btn-ghost btn-sm">Edit</a>
-                    <form method="post" action="{% url 'dashboard:product-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                    </form>
+                <td data-label="Actions" class="text-right">
+                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                        <a href="{% url 'dashboard:product-update' p.id %}" class="btn btn-ghost btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:product-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
         {% endfor %}

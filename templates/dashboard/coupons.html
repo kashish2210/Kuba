@@ -5,10 +5,10 @@
 
 {% block extra_css %}
 <style>
-.cp-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
-.cp-header h1 { flex:1; }
-.cp-search { position:relative; }
-.cp-search input { padding:7px 36px 7px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:0.875rem; background:var(--surface); color:var(--text); width:220px; }
+.cp-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.cp-header h1 { flex:1; min-width: 200px; }
+.cp-search { position:relative; flex:1; min-width: 200px; }
+.cp-search input { padding:7px 36px 7px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:0.875rem; background:var(--surface); color:var(--text); width:100%; }
 .cp-search svg { position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
 
 .cp-type-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
@@ -76,51 +76,55 @@
             <tbody>
             {% for c in coupon_list %}
             <tr data-name="{{ c.name|lower }} {{ c.code|lower }}">
-                <td>
+                <td data-label="Name">
                     <strong>{{ c.name|default:c.code }}</strong>
                     {% if c.name %}<div class="text-xs text-muted">{{ c.code }}</div>{% endif %}
                 </td>
-                <td><span class="cp-type-badge cp-type-coupon">Coupon</span></td>
-                <td>{{ c.orders.count }}</td>
-                <td>
+                <td data-label="Type"><span class="cp-type-badge cp-type-coupon">Coupon</span></td>
+                <td data-label="Used (orders)">{{ c.orders.count }}</td>
+                <td data-label="Activate">
                     <form method="post" action="{% url 'dashboard:coupon-toggle' c.id %}">
                         {% csrf_token %}
                         <button type="submit" class="cp-toggle {% if c.is_active %}on{% endif %}" title="{% if c.is_active %}Deactivate{% else %}Activate{% endif %}"></button>
                     </form>
                 </td>
-                <td style="white-space:nowrap;">
-                    <a href="?edit_coupon={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
-                    <form method="post" action="{% url 'dashboard:coupon-delete' c.id %}" onsubmit="return confirm('Delete {{ c.code }}?');" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
-                    </form>
+                <td data-label="Actions" style="white-space:nowrap;" class="text-right">
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <a href="?edit_coupon={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:coupon-delete' c.id %}" onsubmit="return confirm('Delete {{ c.code }}?');" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
             {% for p in promo_list %}
             <tr data-name="{{ p.name|lower }}">
-                <td>
+                <td data-label="Name">
                     <strong>{{ p.name }}</strong>
                     <div class="text-xs text-muted">{{ p.get_apply_to_display }} — {% if p.apply_to == 'order' %}min ₹{{ p.min_order_amount }}{% else %}min qty {{ p.min_quantity }}{% endif %}</div>
                 </td>
-                <td><span class="cp-type-badge cp-type-promo">Automated Promo</span></td>
-                <td>{{ p.orders.count }}</td>
-                <td>
+                <td data-label="Type"><span class="cp-type-badge cp-type-promo">Automated Promo</span></td>
+                <td data-label="Used (orders)">{{ p.orders.count }}</td>
+                <td data-label="Activate">
                     <form method="post" action="{% url 'dashboard:promotion-toggle' p.id %}">
                         {% csrf_token %}
                         <button type="submit" class="cp-toggle {% if p.is_active %}on{% endif %}" title="{% if p.is_active %}Deactivate{% else %}Activate{% endif %}"></button>
                     </form>
                 </td>
-                <td style="white-space:nowrap;">
-                    <a href="?edit_promo={{ p.id }}" class="btn btn-ghost btn-sm">Edit</a>
-                    <form method="post" action="{% url 'dashboard:promotion-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
-                    </form>
+                <td data-label="Actions" style="white-space:nowrap;" class="text-right">
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <a href="?edit_promo={{ p.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:promotion-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

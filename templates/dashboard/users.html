@@ -12,20 +12,20 @@
 <div class="split-layout">
     <div class="card"><div class="card-body">
         {% if members %}
-        <table class="data-table">
+        <table class="data-table" id="users-table">
             <thead><tr><th>Member</th><th>Email</th><th>Role</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
             <tbody>
             {% for m in members %}
                 <tr>
-                    <td><strong>{{ m.user.username }}</strong></td>
-                    <td class="text-sm">{{ m.user.email|default:"—" }}</td>
-                    <td>
+                    <td data-label="Member"><strong>{{ m.user.username }}</strong></td>
+                    <td data-label="Email" class="text-sm">{{ m.user.email|default:"—" }}</td>
+                    <td data-label="Role">
                         {% if m.role == 'admin' %}<span class="badge badge-primary">Admin</span>
                         {% elif m.role == 'kitchen' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Kitchen</span>
                         {% else %}<span class="badge badge-neutral">Cashier</span>{% endif %}
                     </td>
-                    <td>{% if m.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</td>
-                    <td class="text-right">
+                    <td data-label="Status">{% if m.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</td>
+                    <td data-label="Actions" class="text-right">
                         <details style="display:inline-block;text-align:left;">
                             <summary class="btn btn-ghost btn-sm" style="list-style:none;">Password</summary>
                             <form method="post" action="{% url 'dashboard:user-password' m.id %}" style="margin-top:6px;display:flex;gap:6px;">
