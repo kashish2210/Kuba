@@ -1,419 +1,1003 @@
 {% load static %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>KUBA — The Complete POS for Modern Cafes</title>
-    <meta name="description" content="KUBA is the all-in-one Point of Sale system designed for cafes. POS Terminal, Kitchen Display, Feedback, AI Assistant and more." />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Patrick+Hand&display=swap" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KUBA — Point of Sale for Modern Cafes</title>
+    <meta name="description" content="KUBA is the all-in-one POS platform for cafes. POS terminal, Kitchen Display, AI assistant, Loyalty and more.">
+    <link rel="stylesheet" href="https://unpkg.com/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
-        :root {
-            --caramel: #c8903e;
-            --amber: #e6a83a;
-            --espresso: #1a1209;
-            --dark: #0d0d0d;
-            --card-bg: rgba(255,255,255,0.04);
-            --border: rgba(255,255,255,0.08);
-            --text-muted: rgba(255,255,255,0.5);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @layer base, utilities, demo;
+        @import url(https://fonts.bunny.net/css?family=kodchasan:200,400,600) layer(demo);
 
+        :root {
+            --caramel:    #c8903e;
+            --amber:      #e6a83a;
+            --espresso:   #3b2412;
+            --latte:      #d4a96a;
+            --cream:      #f5efe6;
+            --warm-white: #fdfaf5;
+            --muted:      #7a6652;
+            --border:     rgba(59,36,18,0.12);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--dark);
-            color: #fff;
+            background: var(--warm-white);
+            color: var(--espresso);
             overflow-x: hidden;
         }
 
-        /* ── NOISE TEXTURE ── */
-        body::before {
-            content: '';
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-            opacity: 0.4;
+        /* NEW HERO STYLES */
+        @font-face {
+          font-family: 'Dirtyline';
+          src: url('https://fonts.cdnfonts.com/s/15011/Dirtyline36DaysofType.woff') format('woff');
+          font-weight: normal; font-style: normal; font-display: swap;
         }
 
-        /* ── NAV ── */
-        nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 20px 60px;
-            background: rgba(13,13,13,0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            transition: all 0.3s;
+        .hero-new {
+            height: 100vh;
+            width: 100%;
+            background: #000;
+            color: #fff;
+            font-family: 'Barlow', sans-serif;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 0;
+            overflow: hidden;
+            display: flex; flex-direction: column;
         }
-        .nav-logo {
-            display: flex; align-items: center; gap: 10px;
-            text-decoration: none; color: inherit;
-        }
-        .nav-logo-icon {
-            width: 36px; height: 36px; border-radius: 10px;
-            background: linear-gradient(135deg, var(--caramel), var(--amber));
-            display: flex; align-items: center; justify-content: center;
-        }
-        .nav-logo-icon svg { width: 20px; height: 20px; stroke: #1a1209; fill: none; stroke-width: 2; stroke-linecap: round; }
-        .nav-logo-text { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.05em; }
-        .nav-links { display: flex; gap: 32px; list-style: none; }
-        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.3s; }
-        .nav-links a:hover { color: #fff; }
-        .nav-cta { display: flex; gap: 12px; align-items: center; }
-        .btn-ghost { padding: 9px 20px; border: 1px solid var(--border); border-radius: 8px; color: #fff; text-decoration: none; font-size: 0.875rem; font-weight: 600; transition: all 0.3s; }
-        .btn-ghost:hover { border-color: var(--caramel); color: var(--caramel); }
-        .btn-primary { padding: 9px 22px; border-radius: 8px; background: linear-gradient(135deg, var(--caramel), var(--amber)); color: #1a1209; text-decoration: none; font-size: 0.875rem; font-weight: 700; transition: all 0.3s; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,144,62,0.4); }
 
-        /* ── HERO ── */
-        .hero {
-            min-height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
-            padding: 120px 60px 80px;
+        .hero-video-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            transform: scale(1.08);
+            transform-origin: center;
         }
-        .hero-bg-grad {
-            position: absolute; inset: 0; z-index: 0;
-            background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(200,144,62,0.12) 0%, transparent 70%),
-                        radial-gradient(ellipse 50% 40% at 80% 70%, rgba(200,144,62,0.06) 0%, transparent 60%),
-                        linear-gradient(180deg, #0d0d0d 0%, #111008 100%);
+        .hero-video-bg video, .hero-video-bg canvas {
+            width: 100%; height: 100%; object-fit: cover;
         }
-        /* Animated star dots */
-        .hero-stars {
-            position: absolute; inset: 0; z-index: 0;
-            background-image: radial-gradient(circle, rgba(200,144,62,0.15) 1px, transparent 1px);
-            background-size: 60px 60px;
-            animation: starDrift 20s linear infinite;
-        }
-        @keyframes starDrift { from { background-position: 0 0; } to { background-position: 60px 60px; } }
 
-        .hero-inner { position: relative; z-index: 1; text-align: center; max-width: 900px; }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 6px 16px; border-radius: 100px;
-            border: 1px solid rgba(200,144,62,0.3);
-            background: rgba(200,144,62,0.08);
-            font-size: 0.8rem; font-weight: 600; color: var(--amber);
-            margin-bottom: 28px;
-            animation: fadeUp 0.8s ease both;
+        .hero-title-container {
+            position: absolute;
+            top: 126px; left: 0; right: 0;
+            z-index: 20; width: 100%; padding: 0 16px; text-align: center;
+            transition: all 1s ease;
+            opacity: 0; transform: translateY(24px);
         }
-        .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: pulse 2s ease infinite; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+        .hero-title-container.mounted {
+            opacity: 1; transform: translateY(0);
+        }
 
         .hero-title {
-            font-family: 'Playfair Display', serif;
-            font-size: clamp(3rem, 7vw, 5.5rem);
-            font-weight: 900;
-            line-height: 1.05;
-            margin-bottom: 24px;
-            animation: fadeUp 0.8s 0.1s ease both;
-        }
-        .hero-title .accent { color: var(--caramel); font-style: italic; }
-
-        .hero-sub {
-            font-size: 1.2rem; color: var(--text-muted); line-height: 1.7;
-            max-width: 620px; margin: 0 auto 48px;
-            animation: fadeUp 0.8s 0.2s ease both;
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: clamp(96px, 18vw, 280px);
+            line-height: 0.92;
+            letter-spacing: -0.02em;
+            color: white;
+            user-select: none;
         }
 
-        .hero-ctas {
-            display: flex; align-items: center; justify-content: center; gap: 16px;
-            flex-wrap: wrap;
-            animation: fadeUp 0.8s 0.3s ease both;
+        /* liquid glass classes */
+        .liquid-glass {
+          background: rgba(255,255,255,0.01);
+          background-blend-mode: luminosity;
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          border: none;
+          box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+          position: relative;
+          overflow: hidden;
+          border-radius: 9999px;
         }
-        .btn-hero { padding: 15px 36px; border-radius: 12px; font-size: 1rem; font-weight: 700; text-decoration: none; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-hero-primary { background: linear-gradient(135deg, var(--caramel), var(--amber)); color: #1a1209; box-shadow: 0 8px 32px rgba(200,144,62,0.35); }
-        .btn-hero-primary:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(200,144,62,0.5); }
-        .btn-hero-secondary { border: 1px solid var(--border); color: #fff; background: rgba(255,255,255,0.04); }
-        .btn-hero-secondary:hover { border-color: rgba(200,144,62,0.5); background: rgba(200,144,62,0.08); }
+        .liquid-glass::before {
+          content: "";
+          position: absolute; inset: 0;
+          border-radius: inherit;
+          padding: 1.4px;
+          background: linear-gradient(180deg,
+            rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%,
+            rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+            rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+        }
 
-        .hero-stats {
-            display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
-            margin-top: 72px; padding-top: 48px;
+        .liquid-glass-strong {
+          background: rgba(255,255,255,0.01);
+          background-blend-mode: luminosity;
+          backdrop-filter: blur(50px);
+          -webkit-backdrop-filter: blur(50px);
+          border: none;
+          box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.15);
+          position: relative;
+          overflow: hidden;
+          border-radius: 9999px;
+        }
+        .liquid-glass-strong::before {
+          content: "";
+          position: absolute; inset: 0;
+          border-radius: inherit;
+          padding: 1.4px;
+          background: linear-gradient(180deg,
+            rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 20%,
+            rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+            rgba(255,255,255,0.2) 80%, rgba(255,255,255,0.5) 100%);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+        }
+
+        .hero-nav {
+            position: fixed;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 250; white-space: nowrap;
+            font-family: 'Barlow', sans-serif;
+        }
+        .hero-nav-pill {
+            display: flex; align-items: center; gap: 24px;
+            padding: 10px 16px;
+        }
+        .hero-nav-links { display: flex; align-items: center; gap: 20px; }
+        .hero-nav-link {
+            font-size: 0.875rem; font-weight: 300; color: rgba(255,255,255,0.7);
+            text-decoration: none; transition: color 0.2s;
+        }
+        .hero-nav-link:hover { color: #fff; }
+        .hero-nav-right { display: flex; align-items: center; gap: 12px; margin-left: 16px; }
+        .hero-nav-btn {
+            font-size: 0.875rem; font-weight: 500; color: #fff; text-decoration: none;
+            padding: 6px 16px; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hero-nav-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 0 16px 2px rgba(255,255,255,0.12);
+        }
+        .hero-nav-btn:active { transform: scale(0.97); }
+
+        .hero-bottom {
+            position: absolute;
+            bottom: 48px; left: 0; right: 0; padding: 0 40px;
+            display: flex; align-items: flex-end; justify-content: space-between;
+            z-index: 20; transition: all 1s ease; transition-delay: 0.3s;
+            opacity: 0; transform: translateY(24px);
+        }
+        .hero-bottom.mounted { opacity: 1; transform: translateY(0); }
+        .hero-bottom-text {
+            font-size: 0.875rem; font-weight: 300; color: rgba(255,255,255,0.75);
+            max-width: 220px; line-height: 1.6;
+        }
+        .hero-bottom-text.right { text-align: right; }
+
+        .hero-bottom-center {
+            position: absolute; left: 50%; transform: translateX(-50%); bottom: 0;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .hero-btn-primary {
+            position: relative; background: #fff; color: #000;
+            font-size: 0.875rem; font-weight: 500; padding: 12px 24px;
+            border-radius: 9999px; text-decoration: none; overflow: hidden;
+            transition: all 0.2s; box-shadow: 0 0 0 0 rgba(255,255,255,0);
+        }
+        .hero-btn-primary:hover {
+            transform: scale(1.03); box-shadow: 0 0 24px 4px rgba(255,255,255,0.25);
+        }
+        .hero-btn-primary:active { transform: scale(0.97); }
+        .hero-btn-primary span { position: relative; z-index: 10; }
+        .hero-btn-primary::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to bottom, #fff, rgba(255,255,255,0.85));
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .hero-btn-primary:hover::after { opacity: 1; }
+
+        .hero-btn-secondary {
+            color: #fff; font-size: 0.875rem; font-weight: 500; padding: 12px 24px;
+            text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hero-btn-secondary:hover {
+            transform: scale(1.03); box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 0 20px 2px rgba(255,255,255,0.07);
+        }
+        .hero-btn-secondary:active { transform: scale(0.97); }
+
+
+        @keyframes floatY {
+            0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)}
+        }
+
+        .home-stats {
+            display: flex; gap: 40px; flex-wrap: wrap;
+            margin-top: 48px; padding-top: 40px;
             border-top: 1px solid var(--border);
-            animation: fadeUp 0.8s 0.4s ease both;
+            position: relative; z-index: 1;
+            max-width: 1200px; margin-left: auto; margin-right: auto;
+            width: 100%;
         }
-        .hero-stat-num { font-size: 2.2rem; font-weight: 800; color: var(--amber); }
-        .hero-stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
-
-        .hero-scroll-hint {
-            position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.1em;
-            animation: fadeUp 1s 0.8s ease both;
-        }
-        .scroll-arrow { width: 20px; height: 20px; border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted); transform: rotate(45deg); animation: bounce 1.5s ease infinite; }
-        @keyframes bounce { 0%,100%{transform:rotate(45deg) translateY(0)} 50%{transform:rotate(45deg) translateY(4px)} }
-
-        /* ── SCROLL ANIMATIONS (shared) ── */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(32px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.7s ease, transform 0.7s ease; }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
-        .reveal-left { opacity: 0; transform: translateX(-48px); transition: opacity 0.7s ease, transform 0.7s ease; }
-        .reveal-left.visible { opacity: 1; transform: translateX(0); }
-        .reveal-right { opacity: 0; transform: translateX(48px); transition: opacity 0.7s ease, transform 0.7s ease; }
-        .reveal-right.visible { opacity: 1; transform: translateX(0); }
-        .reveal-delay-1 { transition-delay: 0.1s; }
-        .reveal-delay-2 { transition-delay: 0.2s; }
-        .reveal-delay-3 { transition-delay: 0.3s; }
-        .reveal-delay-4 { transition-delay: 0.4s; }
-
-        /* ── SECTION COMMON ── */
-        section { padding: 120px 60px; position: relative; }
-        .section-label {
-            display: inline-block; font-size: 0.75rem; font-weight: 700;
-            letter-spacing: 0.15em; text-transform: uppercase; color: var(--caramel);
-            margin-bottom: 16px;
-        }
-        .section-title {
+        .home-stat-num {
             font-family: 'Playfair Display', serif;
-            font-size: clamp(2rem, 4vw, 3.2rem);
-            font-weight: 900; line-height: 1.15; margin-bottom: 16px;
+            font-size: 2rem; font-weight: 900; color: var(--caramel);
         }
-        .section-sub { color: var(--text-muted); font-size: 1.05rem; line-height: 1.7; max-width: 560px; }
-        .section-divider { width: 60px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--caramel), var(--amber)); margin: 24px 0; }
+        .home-stat-label { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 
-        /* ── VIDEO DEMO SECTION ── */
-        .demo-intro { max-width: 1200px; margin: 0 auto; }
-        .demo-intro-header { text-align: center; margin-bottom: 80px; }
-        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-bottom: 80px; }
-        .demo-grid.reverse { direction: rtl; }
-        .demo-grid.reverse > * { direction: ltr; }
-        .demo-text { }
-        .demo-video-wrap {
-            position: relative; border-radius: 16px; overflow: hidden;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-            border: 1px solid var(--border);
+        /* ── IMAGE SLIDER (product thumbnails) ── */
+        .home-slider-wrap {
+            margin: 0 auto 60px; max-width: 1200px; width: 100%;
+            position: relative; z-index: 1; padding: 0 60px;
         }
-        .demo-video-wrap::before {
-            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-            border-radius: 16px;
-            border: 1px solid rgba(200,144,62,0.2);
+        .home-slider {
+            display: flex; gap: 20px; overflow-x: auto; padding-bottom: 8px;
+            scrollbar-width: none;
         }
-        .demo-video-wrap video {
-            width: 100%; display: block;
-            border-radius: 16px;
+        .home-slider::-webkit-scrollbar { display: none; }
+        .home-slider-item {
+            flex-shrink: 0; width: 120px; height: 120px;
+            border-radius: 16px; overflow: hidden;
+            border: 2px solid var(--border);
+            background: #fff;
+            cursor: pointer; transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center;
         }
+        .home-slider-item:hover, .home-slider-item.active {
+            border-color: var(--caramel);
+            box-shadow: 0 8px 24px rgba(200,144,62,0.25);
+            transform: translateY(-4px);
+        }
+        .home-slider-item img { width: 80%; height: 80%; object-fit: contain; }
 
-        /* ── CUSTOM VIDEO PLAYER ── */
-        .video-player {
-            position: relative; border-radius: 16px; overflow: hidden;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-            border: 1px solid var(--border);
-            cursor: pointer;
-            background: #000;
+        /* ── HEADING ── */
+        .heading {
+            text-align: center; margin-bottom: 56px;
         }
-        .video-player::after {
-            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-            border-radius: 16px;
-            border: 1px solid rgba(200,144,62,0.2);
+        .heading-label {
+            font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase;
+            font-weight: 700; color: var(--caramel); margin-bottom: 12px;
+            display: block;
         }
-        .video-player video {
-            width: 100%; display: block; border-radius: 16px;
-            transition: transform 0.4s ease;
+        .heading h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 3.5vw, 3rem); font-weight: 900;
+            color: var(--espresso); line-height: 1.15;
         }
-        /* Big centered play icon shown before first play */
-        .vp-big-play {
-            position: absolute; inset: 0; z-index: 5;
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.35);
-            border-radius: 16px;
-            transition: opacity 0.3s;
-        }
-        .vp-big-play-btn {
-            width: 72px; height: 72px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--caramel), var(--amber));
-            border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 8px 32px rgba(200,144,62,0.5);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .vp-big-play-btn:hover { transform: scale(1.12); box-shadow: 0 12px 48px rgba(200,144,62,0.7); }
-        .vp-big-play-btn svg { width: 30px; height: 30px; fill: #1a1209; margin-left: 4px; }
-        .vp-big-play.hidden { opacity: 0; pointer-events: none; }
-        /* Hover label */
-        .vp-hover-label {
-            position: absolute; top: 12px; left: 12px; z-index: 6;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-            border: 1px solid rgba(200,144,62,0.3);
-            border-radius: 20px; padding: 4px 12px;
-            font-size: 0.72rem; font-weight: 600; color: var(--amber);
-            opacity: 0; transition: opacity 0.3s;
-            pointer-events: none;
-        }
-        .video-player:hover .vp-hover-label { opacity: 1; }
-        /* Controls bar */
-        .vp-controls {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
-            padding: 10px 14px 14px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.85));
-            border-radius: 0 0 16px 16px;
-            opacity: 0; transition: opacity 0.3s;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .video-player:hover .vp-controls,
-        .video-player.vp-paused .vp-controls { opacity: 1; }
-        /* Progress */
-        .vp-progress {
-            position: relative; height: 4px; border-radius: 2px;
-            background: rgba(255,255,255,0.2); cursor: pointer;
-        }
-        .vp-progress-fill {
-            height: 100%; border-radius: 2px; width: 0%;
+        .heading h2 span { color: var(--caramel); font-style: italic; }
+        .heading-line {
+            width: 60px; height: 3px; border-radius: 2px; margin: 16px auto 0;
             background: linear-gradient(90deg, var(--caramel), var(--amber));
-            transition: width 0.1s linear; pointer-events: none;
         }
-        .vp-progress:hover .vp-progress-fill { height: 6px; margin-top: -1px; }
-        /* Bottom row */
-        .vp-row {
-            display: flex; align-items: center; gap: 10px;
+
+        /* ── SECTION BASE ── */
+        section { padding: 100px 60px; }
+
+        /* ── ABOUT ── */
+        .about { background: var(--warm-white); }
+        .about-row {
+            display: grid; grid-template-columns: 1fr 1fr;
+            align-items: center; gap: 80px;
+            max-width: 1200px; margin: 0 auto;
         }
-        .vp-btn {
-            background: none; border: none; cursor: pointer; padding: 0;
-            color: #fff; display: flex; align-items: center; flex-shrink: 0;
-            opacity: 0.85; transition: opacity 0.2s;
+        .about-image-wrap { position: relative; }
+        .about-image-bg {
+            position: absolute; inset: -20px; border-radius: 32px;
+            background: linear-gradient(135deg, rgba(200,144,62,0.06), rgba(200,144,62,0.02));
+            border: 1px solid rgba(200,144,62,0.15);
         }
-        .vp-btn:hover { opacity: 1; }
-        .vp-btn svg { width: 18px; height: 18px; fill: currentColor; }
-        .vp-time {
-            font-size: 0.72rem; color: rgba(255,255,255,0.75); font-weight: 500;
-            white-space: nowrap;
+        .about-image-wrap img {
+            width: 100%; border-radius: 24px;
+            box-shadow: 0 24px 64px rgba(59,36,18,0.15);
+            position: relative; z-index: 1;
         }
-        .vp-volume-wrap { display: flex; align-items: center; gap: 6px; }
-        .vp-volume {
-            width: 60px; height: 4px; border-radius: 2px; cursor: pointer;
-            accent-color: var(--caramel);
+        .about-badge {
+            position: absolute; bottom: -16px; right: -16px; z-index: 2;
+            background: linear-gradient(135deg, var(--caramel), var(--amber));
+            color: #fff; border-radius: 20px; padding: 16px 24px;
+            font-weight: 700; font-size: 0.85rem;
+            box-shadow: 0 8px 24px rgba(200,144,62,0.45);
         }
-        .vp-spacer { flex: 1; }
-        /* Fullscreen icon */
-        .vp-fs-btn { margin-left: auto; }
-        .demo-feature-list { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 14px; }
-        .demo-feature-list li {
-            display: flex; align-items: flex-start; gap: 12px;
-            font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.5;
+        .about-badge .num { font-size: 2rem; font-weight: 900; display: block; line-height: 1; }
+
+        .about-content h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem; font-weight: 700; color: var(--espresso);
+            margin-bottom: 16px; line-height: 1.3;
         }
-        .demo-feature-list li::before {
+        .about-content p { color: var(--muted); line-height: 1.8; margin-bottom: 28px; }
+        .about-icons { display: flex; gap: 28px; margin-top: 36px; flex-wrap: wrap; }
+        .about-icon-item { text-align: center; flex: 1; min-width: 100px; }
+        .about-icon-box {
+            width: 64px; height: 64px; border-radius: 18px;
+            background: rgba(200,144,62,0.1);
+            border: 1px solid rgba(200,144,62,0.2);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 12px; font-size: 1.4rem; color: var(--caramel);
+            transition: all 0.3s;
+        }
+        .about-icon-item:hover .about-icon-box {
+            background: var(--caramel); color: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(200,144,62,0.4);
+        }
+        .about-icon-item h4 { font-size: 0.82rem; font-weight: 600; color: var(--espresso); }
+
+        /* ── FEATURE STACKS ── */
+        .features { background: var(--cream); }
+        .features-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 28px; max-width: 1200px; margin: 0 auto;
+            padding-top: 40px; /* Space for the 3D stack offset */
+        }
+
+        @layer demo {
+            .feature-stack {
+                /* defaults */
+                --_offset-steps: 6rem; /* distance up */
+                --_scale-steps: 25;  /* scale behind*/
+                --_opacity-steps: 15; /* opacity behind */
+
+                --_ani-duration: 300ms; /* transition on card elements */
+                --_ani-delay: 200ms; /* delay on card elements (will be multiplied) */
+
+                /* calculations */
+                --_offset-steps-two: calc(var(--_offset-steps) * -1);
+                --_offset-steps-three: calc(var(--_offset-steps) * -2);
+
+                --scale-steps-two: calc(1 - var(--_scale-steps) * 0.01);
+                --scale-steps-three: calc(1 - var(--_scale-steps) * 0.02);
+
+                --opacity-steps-two: calc(1 - var(--_opacity-steps) * 0.02);
+                --opacity-steps-three: calc(1 - var(--_opacity-steps) * 0.04);
+                
+                @media (width > 600px){
+                    --_offset-steps: 4em; /* distance up */
+                }
+
+                display: grid;
+                grid-template-areas: "stack";
+                color: black;
+                width: 100%;
+            }
+
+            .feature-stack article {
+                --_bg-alpha: .5;
+                --_border-radius: 10px;
+                --_bg-dot-offset: 20px;
+                --_bg-dot-color: var(--_bg-clr);
+        
+                position: relative;
+                isolation: isolate;
+                background-color: white;
+                grid-area:stack;
+                /*overflow: clip;*/
+                transition: 500ms ease-in-out;
+                border-radius: var(--_border-radius);
+
+                translate: 0 var(--_offset);
+                order: var(--_order);
+                z-index: var(--_order);
+                scale: var(--_scale);
+                opacity: var(--_opacity);
+                font-family: "Kodchasan", sans-serif;
+                box-shadow: 0 12px 32px rgba(0,0,0,0.05);
+                
+                &::before,
+                &::after{
+                    content: "";
+                    position: absolute;
+                    border-radius: inherit;
+                    z-index: -1;
+                }
+                &::before {
+                    z-index: -1;
+                    inset: calc(var(--_bg-dot-offset) * -1);
+                    background-image: radial-gradient(var(--_bg-dot-color) 1px, transparent 0px);
+                    background-repeat: repeat;
+                    background-size: 5px 5px; /* adjust the spacing between the dots */
+                    background-position: center;
+                    border-radius: calc(var(--_border-radius) + var(--_bg-dot-offset));
+                }
+                &::after{
+                    background-color: white;
+                    inset: 0;
+                }
+            }
+
+            .feature-stack article:nth-of-type(1){
+                --_bg-clr: rgba(163, 230, 53,var(--_bg-alpha,1));
+                --_order:   var(--_1-order, 0);
+                --_scale:   var(--_1-scale, 0.8);
+                --_opacity: var(--_1-opacity, 0);
+                --_offset:  var(--_1-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_1-pointer-event, none);
+                --_pointer-cursor: var(--_1-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(2){
+                --_bg-clr: rgba(251, 191, 36,var(--_bg-alpha,1));
+                --_order:   var(--_2-order, 0);
+                --_scale:   var(--_2-scale, 0.8);
+                --_opacity: var(--_2-opacity, 0);
+                --_offset:  var(--_2-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_2-pointer-event, none);
+                --_pointer-cursor: var(--_2-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(3){
+                --_bg-clr: rgba(249, 168, 212,var(--_bg-alpha,1));
+                --_order:   var(--_3-order, 0);
+                --_scale:   var(--_3-scale, 0.8);
+                --_opacity: var(--_3-opacity, 0);
+                --_offset:  var(--_3-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_3-pointer-event, none);
+                --_pointer-cursor: var(--_3-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(4){
+                --_bg-clr: rgba(163, 230, 53,var(--_bg-alpha,1));
+                --_order:   var(--_4-order, 0);
+                --_scale:   var(--_4-scale, 0.8);
+                --_opacity: var(--_4-opacity, 0);
+                --_offset:  var(--_4-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_4-pointer-event, none);
+                --_pointer-cursor: var(--_4-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(5){
+                --_bg-clr: rgba(251, 191, 36,var(--_bg-alpha,1));
+                --_order:   var(--_5-order, 0);
+                --_scale:   var(--_5-scale, 0.8);
+                --_opacity: var(--_5-opacity, 0);
+                --_offset:  var(--_5-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_5-pointer-event, none);
+                --_pointer-cursor: var(--_5-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(6){
+                --_bg-clr: rgba(249, 168, 212,var(--_bg-alpha,1));
+                --_order:   var(--_6-order, 0);
+                --_scale:   var(--_6-scale, 0.8);
+                --_opacity: var(--_6-opacity, 0);
+                --_offset:  var(--_6-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_6-pointer-event, none);
+                --_pointer-cursor: var(--_6-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(7){
+                --_bg-clr: rgba(163, 230, 53,var(--_bg-alpha,1));
+                --_order:   var(--_7-order, 0);
+                --_scale:   var(--_7-scale, 0.8);
+                --_opacity: var(--_7-opacity, 0);
+                --_offset:  var(--_7-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_7-pointer-event, none);
+                --_pointer-cursor: var(--_7-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(8){
+                --_bg-clr: rgba(251, 191, 36,var(--_bg-alpha,1));
+                --_order:   var(--_8-order, 0);
+                --_scale:   var(--_8-scale, 0.8);
+                --_opacity: var(--_8-opacity, 0);
+                --_offset:  var(--_8-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_8-pointer-event, none);
+                --_pointer-cursor: var(--_8-pointer-cursor, default);
+            }
+            .feature-stack article:nth-of-type(9){
+                --_bg-clr: rgba(249, 168, 212,var(--_bg-alpha,1));
+                --_order:   var(--_9-order, 0);
+                --_scale:   var(--_9-scale, 0.8);
+                --_opacity: var(--_9-opacity, 0);
+                --_offset:  var(--_9-offset, var(--_offset-steps-three));
+                --_pointer-event: var(--_9-pointer-event, none);
+                --_pointer-cursor: var(--_9-pointer-cursor, default);
+            }
+            .feature-stack:has(input:nth-child(1):focus-visible) article:nth-of-type(1) label,
+            .feature-stack:has(input:nth-child(2):focus-visible) article:nth-of-type(2) label,
+            .feature-stack:has(input:nth-child(3):focus-visible) article:nth-of-type(3) label,
+            .feature-stack:has(input:nth-child(4):focus-visible) article:nth-of-type(4) label,
+            .feature-stack:has(input:nth-child(5):focus-visible) article:nth-of-type(5) label,
+            .feature-stack:has(input:nth-child(6):focus-visible) article:nth-of-type(6) label,
+            .feature-stack:has(input:nth-child(7):focus-visible) article:nth-of-type(7) label,
+            .feature-stack:has(input:nth-child(8):focus-visible) article:nth-of-type(8) label,
+            .feature-stack:has(input:nth-child(9):focus-visible) article:nth-of-type(9) label{
+                rotate: 90deg;
+            }
+
+            /* 1 checked */
+            .feature-stack:has(input:nth-child(1):checked){
+                --_1-order: 3;
+                --_1-scale: 1;
+                --_1-opacity: 1;
+                --_1-offset: 0; 
+                --_1-pointer-event: auto;
+                --_1-pointer-cursor: pointer;
+
+                --_2-order: 2;
+                --_2-scale: var(--scale-steps-two);
+                --_2-opacity: var(--opacity-steps-two);
+                --_2-offset: var(--_offset-steps-two); 
+
+                --_3-order: 1;
+                --_3-scale: var(--scale-steps-three);
+                --_3-opacity: var(--opacity-steps-three);
+                --_3-offset: var(--_offset-steps-three);  
+            }
+            /* 2 checked */
+            .feature-stack:has(input:nth-child(2):checked){
+                --_2-order: 3;
+                --_2-scale: 1;
+                --_2-opacity: 1;
+                --_2-offset: 0; 
+                --_2-pointer-event: auto;
+                --_2-pointer-cursor: pointer;
+
+                --_3-order: 2;
+                --_3-scale: var(--scale-steps-two);
+                --_3-opacity: var(--opacity-steps-two);
+                --_3-offset: var(--_offset-steps-two); 
+
+                --_4-order: 1;
+                --_4-scale: var(--scale-steps-three);
+                --_4-opacity: var(--opacity-steps-three);
+                --_4-offset: var(--_offset-steps-three);  
+            }
+            /* 3 checked */
+            .feature-stack:has(input:nth-child(3):checked){
+                --_3-order: 3;
+                --_3-scale: 1;
+                --_3-opacity: 1;
+                --_3-offset: 0; 
+                --_3-pointer-event: auto;
+                --_3-pointer-cursor: pointer;
+
+                --_4-order: 2;
+                --_4-scale: var(--scale-steps-two);
+                --_4-opacity: var(--opacity-steps-two);
+                --_4-offset: var(--_offset-steps-two); 
+
+                --_5-order: 1;
+                --_5-scale: var(--scale-steps-three);
+                --_5-opacity: var(--opacity-steps-three);
+                --_5-offset: var(--_offset-steps-three);  
+            }
+            /* 4 checked */
+            .feature-stack:has(input:nth-child(4):checked){
+                --_4-order: 3;
+                --_4-scale: 1;
+                --_4-opacity: 1;
+                --_4-offset: 0; 
+                --_4-pointer-event: auto;
+                --_4-pointer-cursor: pointer;
+
+                --_5-order: 2;
+                --_5-scale: var(--scale-steps-two);
+                --_5-opacity: var(--opacity-steps-two);
+                --_5-offset: var(--_offset-steps-two); 
+
+                --_6-order: 1;
+                --_6-scale: var(--scale-steps-three);
+                --_6-opacity: var(--opacity-steps-three);
+                --_6-offset: var(--_offset-steps-three);  
+            }
+            /* 5 checked */
+            .feature-stack:has(input:nth-child(5):checked){
+                --_5-order: 3;
+                --_5-scale: 1;
+                --_5-opacity: 1;
+                --_5-offset: 0; 
+                --_5-pointer-event: auto;
+                --_5-pointer-cursor: pointer;
+
+                --_6-order: 2;
+                --_6-scale: var(--scale-steps-two);
+                --_6-opacity: var(--opacity-steps-two);
+                --_6-offset: var(--_offset-steps-two); 
+
+                --_7-order: 1;
+                --_7-scale: var(--scale-steps-three);
+                --_7-opacity: var(--opacity-steps-three);
+                --_7-offset: var(--_offset-steps-three);  
+            }
+            /* 6 checked */
+            .feature-stack:has(input:nth-child(6):checked){
+                --_6-order: 3;
+                --_6-scale: 1;
+                --_6-opacity: 1;
+                --_6-offset: 0; 
+                --_6-pointer-event: auto;
+                --_6-pointer-cursor: pointer;
+
+                --_7-order: 2;
+                --_7-scale: var(--scale-steps-two);
+                --_7-opacity: var(--opacity-steps-two);
+                --_7-offset: var(--_offset-steps-two); 
+
+                --_8-order: 1;
+                --_8-scale: var(--scale-steps-three);
+                --_8-opacity: var(--opacity-steps-three);
+                --_8-offset: var(--_offset-steps-three);  
+            }
+            /* 7 checked */
+            .feature-stack:has(input:nth-child(7):checked){
+                --_7-order: 3;
+                --_7-scale: 1;
+                --_7-opacity: 1;
+                --_7-offset: 0; 
+                --_7-pointer-event: auto;
+                --_7-pointer-cursor: pointer;
+
+                --_8-order: 2;
+                --_8-scale: var(--scale-steps-two);
+                --_8-opacity: var(--opacity-steps-two);
+                --_8-offset: var(--_offset-steps-two); 
+
+                --_9-order: 1;
+                --_9-scale: var(--scale-steps-three);
+                --_9-opacity: var(--opacity-steps-three);
+                --_9-offset: var(--_offset-steps-three);  
+            }
+            /* 8 checked */
+            .feature-stack:has(input:nth-child(8):checked){
+                --_8-order: 3;
+                --_8-scale: 1;
+                --_8-opacity: 1;
+                --_8-offset: 0; 
+                --_8-pointer-event: auto;
+                --_8-pointer-cursor: pointer;
+
+                --_9-order: 2;
+                --_9-scale: var(--scale-steps-two);
+                --_9-opacity: var(--opacity-steps-two);
+                --_9-offset: var(--_offset-steps-two); 
+
+                --_1-order: 1;
+                --_1-scale: var(--scale-steps-three);
+                --_1-opacity: var(--opacity-steps-three);
+                --_1-offset: var(--_offset-steps-three);  
+            }
+            /* 9 checked */
+            .feature-stack:has(input:nth-child(9):checked){
+                --_9-order: 3;
+                --_9-scale: 1;
+                --_9-opacity: 1;
+                --_9-offset: 0; 
+                --_9-pointer-event: auto;
+                --_9-pointer-cursor: pointer;
+
+                --_1-order: 2;
+                --_1-scale: var(--scale-steps-two);
+                --_1-opacity: var(--opacity-steps-two);
+                --_1-offset: var(--_offset-steps-two); 
+
+                --_2-order: 1;
+                --_2-scale: var(--scale-steps-three);
+                --_2-opacity: var(--opacity-steps-three);
+                --_2-offset: var(--_offset-steps-three);  
+            }
+            .feature-stack article > header{
+                padding: .5rem 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background-color: var(--_bg-clr);
+                transition: background-color var(--_ani-duration) ease-in-out;
+                border-radius: var(--_border-radius) var(--_border-radius) 0 0;
+            }
+            .feature-stack article > header > label{
+                padding: 0 ;
+                color: #333;
+                transition: rotate 300ms ease-in-out;    
+                pointer-events: var(--_pointer-event,none);
+                cursor: var(--_pointer-cursor, none);
+            }
+            .feature-stack article > header > label:hover{
+                rotate: 90deg;
+            }
+            .feature-stack article > header > h2 {
+                margin: 0;
+                font-weight: 500;
+                font-size: 1.1rem;
+                transition: translate var(--_ani-duration) ease-in-out, opacity var(--_ani-duration) ease-in-out;
+                transition-delay: var(--_delay-h2,0);
+                opacity: var(--_opacity,0);
+            }
+            .feature-stack article > div{
+                position: relative;
+                padding: 2.5rem 2rem;
+                display: grid;
+                grid-template-columns: 1fr;
+                place-items:start;
+                gap: 1.5rem;
+                min-height: 240px;
+                align-content: center;
+            }
+            .feature-stack article p{
+                transition: var(--_ani-duration) ease-in-out;
+                transition-delay: 500ms;
+                opacity: var(--_opacity,0);
+                margin: 0;
+                font-size: 1.05rem;
+                line-height: 1.7;
+                color: var(--espresso);
+            }
+        }
+
+
+        /* ── VIDEO DEMOS ── */
+        .demos { background: var(--warm-white); }
+        .demo-pair {
+            display: grid; grid-template-columns: 1fr 1fr;
+            align-items: center; gap: 64px;
+            max-width: 1200px; margin: 0 auto 80px;
+        }
+        .demo-pair.flip { }
+        .demo-pair.flip .demo-video { order: -1; }
+        .demo-text {}
+        .demo-label {
+            font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase;
+            font-weight: 700; color: var(--caramel); margin-bottom: 12px;
+        }
+        .demo-text h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.9rem; font-weight: 700;
+            color: var(--espresso); margin-bottom: 14px; line-height: 1.25;
+        }
+        .demo-divider {
+            width: 48px; height: 3px; border-radius: 2px;
+            background: linear-gradient(90deg, var(--caramel), var(--amber));
+            margin: 16px 0;
+        }
+        .demo-text p { color: var(--muted); line-height: 1.8; font-size: 0.95rem; }
+        .demo-list { list-style: none; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .demo-list li {
+            display: flex; align-items: flex-start; gap: 10px;
+            font-size: 0.875rem; color: var(--espresso); line-height: 1.5;
+        }
+        .demo-list li::before {
             content: '';
-            width: 20px; height: 20px; min-width: 20px; border-radius: 50%;
-            background: rgba(200,144,62,0.15); border: 1px solid rgba(200,144,62,0.3);
+            width: 18px; height: 18px; min-width: 18px; border-radius: 50%;
+            background: rgba(200,144,62,0.12); border: 1px solid rgba(200,144,62,0.3);
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c8903e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
-            background-size: 12px; background-repeat: no-repeat; background-position: center;
+            background-size: 10px; background-repeat: no-repeat; background-position: center;
             margin-top: 2px;
         }
 
-        /* ── FEATURES GRID ── */
-        .features-wrap { max-width: 1200px; margin: 0 auto; }
-        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 64px; }
-        .feature-card {
-            padding: 32px; border-radius: 16px;
-            background: var(--card-bg);
+        /* Video player */
+        .demo-video {
+            position: relative; border-radius: 20px; overflow: hidden;
+            background: var(--espresso);
+            box-shadow: 0 24px 64px rgba(59,36,18,0.2);
+            border: 1px solid var(--border); cursor: pointer;
+        }
+        .demo-video video { width: 100%; display: block; }
+        .vp-big-play {
+            position: absolute; inset: 0; z-index: 4;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(59,36,18,0.3); transition: opacity 0.3s;
+        }
+        .vp-big-play.gone { opacity: 0; pointer-events: none; }
+        .vp-big-play-btn {
+            width: 68px; height: 68px; border-radius: 50%; border: none; cursor: pointer;
+            background: linear-gradient(135deg, var(--caramel), var(--amber));
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 28px rgba(200,144,62,0.55); transition: transform 0.2s;
+        }
+        .vp-big-play-btn:hover { transform: scale(1.12); }
+        .vp-big-play-btn svg { width: 28px; height: 28px; fill: #fff; margin-left: 3px; }
+        .vp-controls {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
+            padding: 10px 14px 14px;
+            background: linear-gradient(transparent, rgba(59,36,18,0.8));
+            display: flex; flex-direction: column; gap: 8px;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .demo-video:hover .vp-controls,
+        .demo-video.paused .vp-controls { opacity: 1; }
+        .vp-progress {
+            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); cursor: pointer;
+        }
+        .vp-fill {
+            height: 100%; border-radius: 2px;
+            background: linear-gradient(90deg, var(--caramel), var(--amber));
+            width: 0%; transition: width 0.1s linear;
+        }
+        .vp-row { display: flex; align-items: center; gap: 10px; }
+        .vp-btn {
+            background: none; border: none; cursor: pointer; color: #fff;
+            display: flex; align-items: center; opacity: 0.85; transition: opacity 0.2s;
+        }
+        .vp-btn:hover { opacity: 1; }
+        .vp-btn svg { width: 17px; height: 17px; fill: currentColor; }
+        .vp-time { font-size: 0.72rem; color: rgba(255,255,255,0.75); font-weight: 500; }
+        .vp-spacer { flex: 1; }
+        .vp-vol { width: 56px; height: 4px; accent-color: var(--caramel); cursor: pointer; }
+
+        /* ── SCREENSHOTS (KDS) ── */
+        .kds-section { background: var(--cream); }
+        .kds-wrap {
+            max-width: 1200px; margin: 0 auto;
+            display: grid; grid-template-columns: 1fr 1.4fr;
+            gap: 64px; align-items: center;
+        }
+        .kds-screenshots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .kds-shot {
+            border-radius: 14px; overflow: hidden;
             border: 1px solid var(--border);
-            transition: all 0.4s cubic-bezier(0.25,0.8,0.25,1);
+            box-shadow: 0 8px 24px rgba(59,36,18,0.1);
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .kds-shot:first-child { grid-column: span 2; }
+        .kds-shot:hover { transform: scale(1.03); }
+        .kds-shot img { width: 100%; display: block; }
+
+        /* ── REVIEWS ── */
+        .review { background: var(--warm-white); }
+        .review-slider { max-width: 1200px; margin: 0 auto; }
+        .review-card {
+            background: var(--cream);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 36px;
+            position: relative; margin: 10px;
+        }
+        .review-card .quote-open {
+            position: absolute; top: 20px; left: 24px;
+            font-size: 3rem; color: rgba(200,144,62,0.15);
+            font-family: Georgia, serif; line-height: 1;
+        }
+        .review-card .quote-close {
+            position: absolute; bottom: 20px; right: 24px;
+            font-size: 3rem; color: rgba(200,144,62,0.15);
+            font-family: Georgia, serif; line-height: 1;
+        }
+        .review-avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            border: 3px solid rgba(200,144,62,0.3);
+            overflow: hidden; margin: 0 auto 16px;
+        }
+        .review-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .review-stars { text-align: center; margin-bottom: 16px; }
+        .review-stars i { color: var(--caramel); font-size: 0.9rem; }
+        .review-card p {
+            text-align: center; color: var(--muted); line-height: 1.8;
+            font-size: 0.9rem; margin-bottom: 20px;
+        }
+        .review-card h4 { text-align: center; font-weight: 700; color: var(--espresso); }
+        .review-card span { display: block; text-align: center; font-size: 0.8rem; color: var(--latte); }
+
+        /* ── POS GALLERY ── */
+        .gallery { background: var(--cream); }
+        .poc-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 18px; max-width: 1300px; margin: 0 auto;
+        }
+        .poc-item {
+            border-radius: 14px; overflow: hidden; position: relative;
+            border: 1px solid var(--border); cursor: pointer;
+            transition: all 0.35s ease;
+        }
+        .poc-item:hover { transform: translateY(-6px) scale(1.02); border-color: rgba(200,144,62,0.3); box-shadow: 0 16px 48px rgba(59,36,18,0.18); }
+        .poc-item.large { grid-column: span 2; }
+        .poc-item img { width: 100%; height: 180px; object-fit: cover; display: block; transition: transform 0.4s; }
+        .poc-item.large img { height: 220px; }
+        .poc-item:hover img { transform: scale(1.06); }
+        .poc-label {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 10px 14px 12px;
+            background: linear-gradient(transparent, rgba(59,36,18,0.75));
+            font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.9);
+        }
+
+        /* ── CTA / BOOK SECTION ── */
+        .cta-section {
+            background: var(--espresso);
             position: relative; overflow: hidden;
         }
-        .feature-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-            background: linear-gradient(90deg, var(--caramel), var(--amber));
-            transform: scaleX(0); transform-origin: left;
-            transition: transform 0.4s ease;
+        .cta-section::before {
+            content: '';
+            position: absolute; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse 70% 60% at 30% 50%, rgba(200,144,62,0.15) 0%, transparent 70%);
         }
-        .feature-card:hover { transform: translateY(-6px); border-color: rgba(200,144,62,0.25); box-shadow: 0 24px 60px rgba(0,0,0,0.4); }
-        .feature-card:hover::before { transform: scaleX(1); }
-        .feature-icon {
-            width: 52px; height: 52px; border-radius: 14px;
-            background: rgba(200,144,62,0.1); border: 1px solid rgba(200,144,62,0.2);
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 20px;
+        .cta-wrap { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+        .cta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+        .cta-text h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900;
+            color: #fff; line-height: 1.15; margin-bottom: 16px;
         }
-        .feature-icon svg { width: 24px; height: 24px; stroke: var(--caramel); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-        .feature-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
-        .feature-desc { font-size: 0.88rem; color: var(--text-muted); line-height: 1.65; }
+        .cta-text h2 em { color: var(--amber); font-style: italic; }
+        .cta-text p { color: rgba(255,255,255,0.6); line-height: 1.8; font-size: 1rem; margin-bottom: 36px; }
+        .cta-buttons { display: flex; gap: 14px; flex-wrap: wrap; }
+        .btn-light {
+            background: #fff; color: var(--espresso); box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .btn-light:hover { background: var(--cream); }
 
-        /* ── KDS SECTION ── */
-        .kds-section { background: linear-gradient(180deg, transparent 0%, rgba(200,144,62,0.04) 50%, transparent 100%); }
-        .kds-wrap { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.4fr; gap: 64px; align-items: center; }
-        .kds-screenshots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .kds-img-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); transition: transform 0.4s; }
-        .kds-img-wrap:hover { transform: scale(1.03); }
-        .kds-img-wrap img { width: 100%; display: block; }
-        .kds-img-wrap.large { grid-column: span 2; }
-
-        /* ── POS SCREENSHOTS ── */
-        .poc-section { }
-        .poc-wrap { max-width: 1300px; margin: 0 auto; }
-        .poc-header { text-align: center; max-width: 600px; margin: 0 auto 64px; }
-        .poc-gallery {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+        .cta-form { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 36px; }
+        .form-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 24px; }
+        .form-group { margin-bottom: 16px; }
+        .form-input {
+            width: 100%; padding: 13px 18px; border-radius: 10px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            color: #fff; font-size: 0.9rem; font-family: inherit;
+            outline: none; transition: border-color 0.3s;
         }
-        .poc-img-wrap {
-            border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
-            transition: all 0.4s ease; cursor: pointer; position: relative;
-        }
-        .poc-img-wrap:hover { transform: translateY(-6px) scale(1.02); border-color: rgba(200,144,62,0.3); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        .poc-img-wrap img { width: 100%; height: 180px; object-fit: cover; display: block; transition: transform 0.4s; }
-        .poc-img-wrap:hover img { transform: scale(1.06); }
-        .poc-img-label {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            padding: 12px 14px 14px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
-            font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.85);
-        }
-        .poc-img-wrap.large { grid-column: span 2; }
-        .poc-img-wrap.large img { height: 220px; }
-
-        /* ── TESTIMONIAL / CTA BANNER ── */
-        .cta-section {
-            background: linear-gradient(135deg, rgba(200,144,62,0.12), rgba(200,144,62,0.04));
-            border-top: 1px solid rgba(200,144,62,0.15);
-            border-bottom: 1px solid rgba(200,144,62,0.15);
-        }
-        .cta-wrap { max-width: 800px; margin: 0 auto; text-align: center; }
-        .cta-emoji { font-size: 3rem; margin-bottom: 20px; display: block; }
-        .cta-title { font-family: 'Playfair Display', serif; font-size: clamp(2rem,4vw,3.2rem); font-weight: 900; margin-bottom: 16px; }
-        .cta-sub { color: var(--text-muted); font-size: 1.1rem; line-height: 1.7; margin-bottom: 40px; }
-        .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .form-input::placeholder { color: rgba(255,255,255,0.4); }
+        .form-input:focus { border-color: var(--caramel); background: rgba(255,255,255,0.12); }
+        .form-input.textarea { resize: vertical; min-height: 100px; }
+        .btn-full { width: 100%; justify-content: center; display: flex; }
 
         /* ── FOOTER ── */
-        footer {
-            padding: 48px 60px; border-top: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;
-            color: var(--text-muted); font-size: 0.85rem;
+        .footer { background: #1a0d05; padding: 60px 60px 32px; }
+        .footer-grid {
+            display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px; max-width: 1200px; margin: 0 auto;
+            padding-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.08);
         }
-        footer a { color: var(--caramel); text-decoration: none; }
+        .footer-brand .logo { color: var(--cream); margin-bottom: 16px; display: inline-flex; }
+        .footer-brand p { color: rgba(255,255,255,0.45); font-size: 0.875rem; line-height: 1.7; }
+        .footer-col h4 { color: var(--latte); font-weight: 700; font-size: 0.85rem; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.08em; }
+        .footer-col a {
+            display: block; color: rgba(255,255,255,0.5); text-decoration: none;
+            font-size: 0.875rem; margin-bottom: 10px; transition: color 0.3s;
+        }
+        .footer-col a:hover { color: var(--amber); }
+        .footer-credit { text-align: center; color: rgba(255,255,255,0.3); font-size: 0.8rem; padding-top: 28px; max-width: 1200px; margin: 0 auto; }
 
         /* ── LIGHTBOX ── */
-        .lightbox { position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; padding: 32px; }
+        .lightbox {
+            position: fixed; inset: 0; z-index: 999;
+            background: rgba(26,13,5,0.94);
+            display: none; align-items: center; justify-content: center; padding: 32px;
+        }
         .lightbox.open { display: flex; }
-        .lightbox img { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 32px 80px rgba(0,0,0,0.8); }
-        .lightbox-close { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-        .lightbox-close:hover { background: rgba(200,144,62,0.3); }
+        .lightbox img { max-width: 90vw; max-height: 85vh; border-radius: 12px; }
+        .lightbox-close {
+            position: absolute; top: 24px; right: 24px;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); border: none;
+            color: #fff; font-size: 1.4rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .lightbox-close:hover { background: rgba(200,144,62,0.4); }
+
+        /* ── SCROLL REVEAL ── */
+        .reveal { opacity: 0; transform: translateY(36px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .reveal.left { transform: translateX(-40px); }
+        .reveal.right { transform: translateX(40px); }
+        .reveal.visible { opacity: 1; transform: translate(0,0); }
+        .reveal.d1 { transition-delay: 0.1s; }
+        .reveal.d2 { transition-delay: 0.2s; }
+        .reveal.d3 { transition-delay: 0.3s; }
+        .reveal.d4 { transition-delay: 0.4s; }
 
         /* ── RESPONSIVE ── */
         @media (max-width: 1024px) {
-            nav { padding: 16px 24px; }
-            .nav-links { display: none; }
-            section { padding: 80px 24px; }
-            .demo-grid { grid-template-columns: 1fr; gap: 32px; }
-            .demo-grid.reverse { direction: ltr; }
-            .features-grid { grid-template-columns: repeat(2,1fr); }
-            .kds-wrap { grid-template-columns: 1fr; }
-            .poc-gallery { grid-template-columns: repeat(2,1fr); }
-            .poc-img-wrap.large { grid-column: span 2; }
-            .hero { padding: 100px 24px 60px; }
+            .hero-nav { display: none; }
+            .hero-title { font-size: clamp(64px, 15vw, 120px); }
+            .hero-bottom { flex-direction: column; align-items: center; gap: 32px; padding: 0 20px; bottom: 24px; }
+            .hero-bottom-text { text-align: center !important; }
+            .hero-bottom-center { position: relative; left: auto; transform: none; }
+            section { padding: 72px 24px; }
+            .home { padding: 100px 24px 48px; }
+            .home-row, .about-row, .kds-wrap, .demo-pair, .cta-grid { grid-template-columns: 1fr; gap: 40px; }
+            .demo-pair.flip .demo-video { order: 0; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .poc-grid { grid-template-columns: repeat(2, 1fr); }
+            .poc-item.large { grid-column: span 2; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .home-slider-wrap { padding: 0 24px; }
         }
         @media (max-width: 640px) {
             .features-grid { grid-template-columns: 1fr; }
-            .poc-gallery { grid-template-columns: 1fr; }
-            .poc-img-wrap.large { grid-column: span 1; }
+            .poc-grid { grid-template-columns: 1fr; }
+            .poc-item.large { grid-column: span 1; }
             .kds-screenshots { grid-template-columns: 1fr; }
-            .kds-img-wrap.large { grid-column: span 1; }
-            footer { flex-direction: column; text-align: center; }
+            .kds-shot:first-child { grid-column: span 1; }
+            .footer-grid { grid-template-columns: 1fr; }
+            .home-stats { gap: 24px; }
         }
     </style>
 </head>
@@ -421,779 +1005,941 @@
 
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox">
-    <button class="lightbox-close" onclick="closeLightbox()">×</button>
-    <img id="lightbox-img" src="" alt="" />
+    <button class="lightbox-close" onclick="closeLightbox()">&#215;</button>
+    <img id="lb-img" src="" alt="">
 </div>
 
-<!-- NAV -->
-<nav id="main-nav">
-    <a href="/" class="nav-logo">
-        <div class="nav-logo-icon">
-            <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+<!-- NEW NAV -->
+<nav class="hero-nav">
+    <div class="liquid-glass hero-nav-pill">
+        <svg width="44" height="26" viewBox="0 0 44 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="3" width="14" height="20" rx="3" fill="white"/>
+            <rect x="16" y="3" width="12" height="20" rx="3" fill="white"/>
+            <rect x="30" y="3" width="14" height="20" rx="3" fill="white"/>
+        </svg>
+        <div class="hero-nav-links">
+            <a href="#about" class="hero-nav-link">About</a>
+            <a href="#features" class="hero-nav-link">Features</a>
+            <a href="#demos" class="hero-nav-link">Demos</a>
+            <a href="#reviews" class="hero-nav-link">Reviews</a>
+            <a href="#contact" class="hero-nav-link">Contact</a>
         </div>
-        <span class="nav-logo-text">KUBA</span>
-    </a>
-    <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#pos-demo">POS Terminal</a></li>
-        <li><a href="#kitchen">Kitchen</a></li>
-        <li><a href="#gallery">Gallery</a></li>
-    </ul>
-    <div class="nav-cta">
-        <a href="{% url 'account_login' %}" class="btn-ghost">Sign In</a>
-        <a href="{% url 'account_signup' %}" class="btn-primary">Get Started →</a>
+        <div class="hero-nav-right">
+            <a href="{% url 'account_login' %}" class="hero-nav-link">Sign in</a>
+            <a href="{% url 'account_signup' %}" class="liquid-glass-strong hero-nav-btn">Try it free</a>
+        </div>
     </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-    <div class="hero-bg-grad"></div>
-    <div class="hero-stars"></div>
-    <div class="hero-inner">
-        <div class="hero-badge">
-            <span class="hero-badge-dot"></span>
-            Now Live — Fully cloud-based POS
-        </div>
-        <h1 class="hero-title">
-            Your cafe deserves<br/>a <span class="accent">smarter</span> POS.
-        </h1>
-        <p class="hero-sub">
-            KUBA is the all-in-one management platform built for modern cafes. From the POS terminal to the kitchen display to AI-powered feedback — everything you need, in one beautiful dashboard.
-        </p>
-        <div class="hero-ctas">
-            <a href="{% url 'account_signup' %}" class="btn-hero btn-hero-primary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                Start Free Today
+<!-- NEW HERO -->
+<section class="hero-new" id="home">
+    <div class="hero-video-bg" id="hero-bg">
+        <video id="hero-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260511_080827_a9e5ad52-b6ee-4e79-b393-d936f179cfd7.mp4" muted playsinline preload="auto" crossorigin="anonymous"></video>
+        <canvas id="hero-canvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="hero-title-container" id="hero-title-ctn">
+        <h1 class="hero-title">KUBA Cafe POS</h1>
+    </div>
+
+    <div class="hero-bottom" id="hero-bottom">
+        <p class="hero-bottom-text">KUBA's POS understands your menu, staff, and cafe like an expert manager would.</p>
+        
+        <div class="hero-bottom-center">
+            <a href="{% url 'account_signup' %}" class="hero-btn-primary">
+                <span>Start Free Trial</span>
             </a>
-            <a href="#pos-demo" class="btn-hero btn-hero-secondary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            <a href="#demos" class="liquid-glass hero-btn-secondary">
                 See it in action
             </a>
         </div>
-        <div class="hero-stats">
-            <div>
-                <div class="hero-stat-num">⚡ Live</div>
-                <div class="hero-stat-label">Real-time Order Sync</div>
-            </div>
-            <div>
-                <div class="hero-stat-num">🍳 KDS</div>
-                <div class="hero-stat-label">Kitchen Display System</div>
-            </div>
-            <div>
-                <div class="hero-stat-num">🤖 AI</div>
-                <div class="hero-stat-label">AI Cafe Assistant</div>
-            </div>
-            <div>
-                <div class="hero-stat-num">📊 360°</div>
-                <div class="hero-stat-label">Complete Analytics</div>
-            </div>
+
+        <p class="hero-bottom-text right">Control your floor, track payments, and retain customers effortlessly.</p>
+    </div>
+</section>
+
+<main style="position: relative; z-index: 10; margin-top: 100vh; background: var(--warm-white); box-shadow: 0 -20px 40px rgba(0,0,0,0.15);">
+
+<section class="stats-bar" style="padding: 40px 60px; background: var(--cream);">
+    <div class="home-stats reveal" style="max-width: 1200px; margin: 0 auto;">
+        <div>
+            <div class="home-stat-num">Live</div>
+            <div class="home-stat-label">Real-time Order Sync</div>
+        </div>
+        <div>
+            <div class="home-stat-num">KDS</div>
+            <div class="home-stat-label">Kitchen Display System</div>
+        </div>
+        <div>
+            <div class="home-stat-num">AI</div>
+            <div class="home-stat-label">Built-in AI Assistant</div>
+        </div>
+        <div>
+            <div class="home-stat-num">360°</div>
+            <div class="home-stat-label">Complete Analytics</div>
+        </div>
+        <div>
+            <div class="home-stat-num">Multi</div>
+            <div class="home-stat-label">Tenant Subdomain Support</div>
         </div>
     </div>
-    <div class="hero-scroll-hint">
-        SCROLL TO EXPLORE
-        <div class="scroll-arrow"></div>
+</section>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+    <div class="heading reveal">
+        <span class="heading-label">Why KUBA?</span>
+        <h2>What makes our platform <span>special</span></h2>
+        <div class="heading-line"></div>
+    </div>
+    <div class="about-row">
+        <div class="about-image-wrap reveal left">
+            <div class="about-image-bg"></div>
+            <img src="{% static 'stock/poc/front.png' %}" alt="KUBA POS Terminal" onerror="this.style.display='none'">
+            <div class="about-badge">
+                <span class="num">360°</span>
+                Complete Platform
+            </div>
+        </div>
+        <div class="about-content reveal right">
+            <h3>Everything your cafe needs, in one place</h3>
+            <p>KUBA is a multi-tenant cloud platform — each cafe gets its own isolated subdomain workspace. From the POS terminal to the kitchen display to AI-powered feedback, it's all built-in, all real-time, and all beautifully designed.</p>
+            <a href="{% url 'account_signup' %}" class="btn">Create your cafe &rarr;</a>
+            <div class="about-icons">
+                <div class="about-icon-item">
+                    <div class="about-icon-box"><i class="fas fa-bolt"></i></div>
+                    <h4>Lightning Fast</h4>
+                </div>
+                <div class="about-icon-item">
+                    <div class="about-icon-box"><i class="fas fa-globe"></i></div>
+                    <h4>Your Subdomain</h4>
+                </div>
+                <div class="about-icon-item">
+                    <div class="about-icon-box"><i class="fas fa-robot"></i></div>
+                    <h4>AI Powered</h4>
+                </div>
+                <div class="about-icon-item">
+                    <div class="about-icon-box"><i class="fas fa-chart-line"></i></div>
+                    <h4>Full Analytics</h4>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
 <!-- FEATURES GRID -->
-<section id="features">
-    <div class="features-wrap">
-        <div class="reveal" style="text-align:center; max-width:640px; margin: 0 auto 16px;">
-            <span class="section-label">Everything in one place</span>
-            <h2 class="section-title">A complete toolkit for your cafe</h2>
-            <p class="section-sub" style="margin:0 auto;">Every feature you need to run your front-of-house, back-of-house, and business insights — built into one seamless platform.</p>
+<section class="features" id="features">
+    <div class="heading reveal">
+        <span class="heading-label">Platform Features</span>
+        <h2>Everything in <span>one platform</span></h2>
+        <div class="heading-line"></div>
+    </div>
+    <div style="display:flex; justify-content:center; max-width: 600px; margin: 0 auto; padding-top: 40px;">
+        <div class="feature-stack reveal d1">
+            <input class="sr-only" id="card-1-1" type="radio" name="panel-1" checked />
+            <input class="sr-only" id="card-1-2" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-3" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-4" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-5" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-6" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-7" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-8" type="radio" name="panel-1" />
+            <input class="sr-only" id="card-1-9" type="radio" name="panel-1" />
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-desktop"></i> POS Terminal — Live</h2>
+                    <label for="card-1-2">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Lightning-fast tap-to-order interface.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Designed for high-volume cafes, our POS is optimized for speed and accuracy. It features a live order cart, category filtering, and instant customer lookup.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>AI Cross-sells:</strong> Smart "You may also like" suggestions</li>
+                        <li><strong>Live Sync:</strong> Instantly pushes orders to KDS via WebSocket</li>
+                        <li><strong>Instant Payments:</strong> Integrated Cash, Card, and UPI</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-utensils"></i> Kitchen Display System</h2>
+                    <label for="card-1-3">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">A full-screen, real-time order board.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Orders appear instantly via WebSocket push from the POS. Kitchen staff can tap any item to toggle its state—no page refresh required.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Color-coded urgency:</strong> Keep track of long-pending orders</li>
+                        <li><strong>Status updates:</strong> New &rarr; Cooking &rarr; Ready &rarr; Completed</li>
+                        <li><strong>Device agnostics:</strong> Works on any tablet, monitor, or TV</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-table"></i> Floor & Tables</h2>
+                    <label for="card-1-4">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Interactive canvas to map seating.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Easily design your floor plan using our drag-and-drop grid canvas. See which tables are Free, Occupied, or Reserved in real-time.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Live Status:</strong> Syncs instantly with the POS</li>
+                        <li><strong>Table Assignment:</strong> Assign orders directly to a table</li>
+                        <li><strong>Admin Overrides:</strong> Force-unlock any table if needed</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-tag"></i> Products & Catalog</h2>
+                    <label for="card-1-5">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Manage your entire menu with ease.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Add new items, set prices, upload photos, and organize categories all in one place. Group products for fast POS navigation.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Custom Tags:</strong> Mark as Chef's Special, Vegan, or New</li>
+                        <li><strong>Featured Flags:</strong> Add a visual badge to top sellers</li>
+                        <li><strong>Smart Linking:</strong> Configure AI cross-sell recommendations</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-heart"></i> Loyalty Program</h2>
+                    <label for="card-1-6">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Build lasting customer relationships.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Turn first-time visitors into regulars by creating customer profiles with complete visit history and automated point tracking.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Auto-tracking:</strong> Award points per order automatically</li>
+                        <li><strong>Easy Redemption:</strong> Customers redeem perks right at checkout</li>
+                        <li><strong>Customer Lookup:</strong> Search by name or phone at the POS</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-star"></i> Feedback & Reports</h2>
+                    <label for="card-1-7">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Automated smart feedback collection.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Automatically trigger review emails after an order is completed. Track ratings and comments in a live reporting dashboard.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Email Automation:</strong> Sent with unique signed tokens</li>
+                        <li><strong>Live Feed:</strong> View all ratings and comments instantly</li>
+                        <li><strong>Staff Metrics:</strong> Performance linked to customer satisfaction</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-percent"></i> Coupons & Promos</h2>
+                    <label for="card-1-8">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Drive sales with flexible discounts.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Create fixed-amount or percentage-based discounts to reward customers and boost off-peak revenue.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Time-limited:</strong> Set precise start and end datetimes</li>
+                        <li><strong>Happy Hours:</strong> Unlimited or restricted usage</li>
+                        <li><strong>POS Integration:</strong> Apply instantly from a POS dropdown</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2><i class="fas fa-receipt"></i> Branded Receipts</h2>
+                    <label for="card-1-9">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Customize receipts for your brand.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">Provide a premium post-purchase experience by designing digital and printed receipts that match your cafe's aesthetic.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Custom Branding:</strong> Upload your cafe logo</li>
+                        <li><strong>Personalized Messages:</strong> Custom header and footer text</li>
+                        <li><strong>Feedback QR:</strong> Embedded code linking to your review page</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2 style="color:var(--caramel);"><i class="fas fa-robot"></i> AI Chat Assistant</h2>
+                    <label for="card-1-1">&#10539;</label>
+                </header>
+                <div class="feature-stack-content">
+                    <p style="font-family:'Playfair Display', serif; font-size:1.4rem; color:var(--espresso); margin-bottom:10px;">Your 24/7 intelligent cafe consultant.</p>
+                    <p style="color:var(--muted); font-size:0.95rem;">An embedded AI-powered chatbot that knows your live menu. It scrapes your product data to provide highly accurate assistance.</p>
+                    <ul class="demo-list" style="margin-top:15px; font-size:0.95rem;">
+                        <li><strong>Live Context:</strong> AI understands your current active menu</li>
+                        <li><strong>Rich Product Cards:</strong> Generates interactive UI bubbles</li>
+                        <li><strong>Business Strategy:</strong> Ask for dynamic cross-sell strategies</li>
+                    </ul>
+                </div>
+            </article>
         </div>
-        <div class="features-grid">
-            <!-- Dashboard -->
-            <div class="feature-card reveal reveal-delay-1">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    </div>
+</section>
+<!-- VIDEO DEMOS -->
+<section class="demos" id="demos">
+    <div class="heading reveal">
+        <span class="heading-label">Feature Demos</span>
+        <h2>See every feature <span>in action</span></h2>
+        <div class="heading-line"></div>
+    </div>
+
+    <div class="demo-pair">
+        <div class="demo-text reveal left">
+            <div class="demo-label">Catalog</div>
+            <h3>Manage your menu with ease</h3>
+            <div class="demo-divider"></div>
+            <p>Add new items, set prices, upload photos, and organize categories — all in one place. Mark today's specials with a single tap.</p>
+            <ul class="demo-list">
+                <li>Products with images, price & tax settings</li>
+                <li>Tag items as Chef's Special, Vegan, or Featured</li>
+                <li>AI-powered cross-sell recommendations</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal right" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/product-section.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Main Dashboard</div>
-                <div class="feature-desc">Bird's-eye view of daily sales, top items, and real-time revenue metrics so you always know how your business is performing.</div>
             </div>
-            <!-- POS -->
-            <div class="feature-card reveal reveal-delay-2">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair flip">
+        <div class="demo-text reveal right">
+            <div class="demo-label">Floor Management</div>
+            <h3>Visual floor plan & table control</h3>
+            <div class="demo-divider"></div>
+            <p>Design your cafe's seating on an interactive canvas. Monitor which tables are live, locked, or free — and unlock in one tap.</p>
+            <ul class="demo-list">
+                <li>Drag-and-drop table placement on a grid</li>
+                <li>Real-time occupied / free / reserved status</li>
+                <li>Force-unlock tables from admin or POS</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal left" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/floor-table-config.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">POS Terminal — Live</div>
-                <div class="feature-desc">Lightning-fast, tap-to-order interface with AI cross-sell recommendations, live table management, and instant payment processing.</div>
             </div>
-            <!-- Floor -->
-            <div class="feature-card reveal reveal-delay-3">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair">
+        <div class="demo-text reveal left">
+            <div class="demo-label">AI Powered</div>
+            <h3>Your 24/7 AI cafe consultant</h3>
+            <div class="demo-divider"></div>
+            <p>Ask anything — from menu details to cross-sell ideas. The AI assistant knows your live menu and helps your team deliver a personalized experience.</p>
+            <ul class="demo-list">
+                <li>Rich product cards generated from your live menu</li>
+                <li>AI cross-sell suggestions at checkout</li>
+                <li>Ask about allergens, ingredients, or specials</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal right" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/ai-assist-config.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Floor & Tables</div>
-                <div class="feature-desc">Interactive visual canvas to map your cafe's seating. Drag, place, and monitor table statuses — occupied, reserved, or open — in real time.</div>
             </div>
-            <!-- Products -->
-            <div class="feature-card reveal reveal-delay-1">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair flip">
+        <div class="demo-text reveal right">
+            <div class="demo-label">Coupons</div>
+            <h3>Discounts & Promotions</h3>
+            <div class="demo-divider"></div>
+            <p>Create powerful promotional campaigns with percentage or fixed-amount discounts. Apply them directly from the POS checkout screen.</p>
+            <ul class="demo-list">
+                <li>Time-limited or unlimited usage coupons</li>
+                <li>Apply instantly during checkout</li>
+                <li>Full audit trail of all discounts applied</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal left" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/cupons-promo-cofig.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Products & Categories</div>
-                <div class="feature-desc">Add items, set prices, tag specials as "Chef's Special" or "Vegan", and group everything into clean categories for fast ordering.</div>
             </div>
-            <!-- Coupons -->
-            <div class="feature-card reveal reveal-delay-2">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair">
+        <div class="demo-text reveal left">
+            <div class="demo-label">Payments</div>
+            <h3>Frictionless Checkout</h3>
+            <div class="demo-divider"></div>
+            <p>Accept payments your way. Toggle supported payment methods like Cash, Card, or UPI, and seamlessly integrate with Razorpay.</p>
+            <ul class="demo-list">
+                <li>Configure available payment methods per cafe</li>
+                <li>Razorpay credential integration</li>
+                <li>Fast split-payment and receipt generation</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal right" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/payment_config.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Coupons & Promotions</div>
-                <div class="feature-desc">Create custom discount codes, happy hour specials, and percentage-off promotions in seconds to drive sales and reward customers.</div>
             </div>
-            <!-- Loyalty -->
-            <div class="feature-card reveal reveal-delay-3">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair flip">
+        <div class="demo-text reveal right">
+            <div class="demo-label">Loyalty</div>
+            <h3>Build Customer Loyalty</h3>
+            <div class="demo-divider"></div>
+            <p>Turn first-time visitors into regulars. Automatically accrue points for every purchase and let customers easily redeem perks.</p>
+            <ul class="demo-list">
+                <li>Create and manage customer profiles</li>
+                <li>Auto-accrue points based on order value</li>
+                <li>Redeem perks directly from POS checkout</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal left" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/loyality-cofnfig.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Loyalty Program</div>
-                <div class="feature-desc">Keep your regulars coming back. Manage customer profiles, track their visits, and reward them automatically with points and perks.</div>
             </div>
-            <!-- KDS -->
-            <div class="feature-card reveal reveal-delay-1">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair">
+        <div class="demo-text reveal left">
+            <div class="demo-label">Receipts</div>
+            <h3>Branded Receipts</h3>
+            <div class="demo-divider"></div>
+            <p>Leave a lasting impression with beautifully customized receipts. Add your logo, personalized footers, and feedback QR codes.</p>
+            <ul class="demo-list">
+                <li>Customizable header and footer messages</li>
+                <li>Auto-embedded feedback QR codes</li>
+                <li>Email receipts directly to customers</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal right" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/receipts_config.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Kitchen Display — Live</div>
-                <div class="feature-desc">Ditch paper tickets. Orders pop instantly onto the kitchen screen. Chefs tap to mark "Cooking" or "Ready" so front staff always knows the status.</div>
             </div>
-            <!-- Feedback -->
-            <div class="feature-card reveal reveal-delay-2">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair flip">
+        <div class="demo-text reveal right">
+            <div class="demo-label">Feedback</div>
+            <h3>Customer Feedback</h3>
+            <div class="demo-divider"></div>
+            <p>Understand your customers better. Automatically collect ratings and reviews to monitor your cafe's performance in real time.</p>
+            <ul class="demo-list">
+                <li>Automated post-order review emails</li>
+                <li>Live feed of customer ratings and comments</li>
+                <li>Staff performance tied to customer ratings</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal left" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/feedback-config.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title">Feedback & Reports</div>
-                <div class="feature-desc">Automatically email review requests post-visit. View live ratings and comments in one clean dashboard to find trends and improve service.</div>
             </div>
-            <!-- AI -->
-            <div class="feature-card reveal reveal-delay-3" style="background: linear-gradient(135deg, rgba(200,144,62,0.08), rgba(200,144,62,0.02)); border-color: rgba(200,144,62,0.2);">
-                <div class="feature-icon" style="background:rgba(200,144,62,0.2); border-color: rgba(200,144,62,0.4);">
-                    <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+        </div>
+    </div>
+
+    <div class="demo-pair">
+        <div class="demo-text reveal left">
+            <div class="demo-label">Customization</div>
+            <h3>Make It Yours</h3>
+            <div class="demo-divider"></div>
+            <p>Your cafe, your brand. Customize colors, logos, and domain settings to make the platform feel like a true extension of your business.</p>
+            <ul class="demo-list">
+                <li>Custom brand colors and logo uploads</li>
+                <li>Your own branded subdomain URL</li>
+                <li>Available to your team 24/7 from any device</li>
+            </ul>
+        </div>
+        <div class="demo-video reveal right" data-vp>
+            <div class="vp-big-play"><button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></div>
+            <video muted playsinline preload="metadata"><source src="{% static 'stock/customize_your_cafe.mp4' %}" type="video/mp4"/></video>
+            <div class="vp-controls">
+                <div class="vp-progress"><div class="vp-fill"></div></div>
+                <div class="vp-row">
+                    <button class="vp-btn vp-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+                    <span class="vp-time">0:00 / 0:00</span>
+                    <div class="vp-spacer"></div>
+                    <button class="vp-btn vp-mute"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    <input type="range" class="vp-vol" min="0" max="1" step="0.05" value="0">
+                    <button class="vp-btn vp-fs"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
                 </div>
-                <div class="feature-title" style="color: var(--amber);">🤖 AI Assistant</div>
-                <div class="feature-desc">Your personal cafe consultant. Generate rich product cards, answer menu questions, and get smart cross-sell strategies powered by AI.</div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- POS TERMINAL VIDEO DEMO -->
-<section id="pos-demo" style="background: linear-gradient(180deg, transparent, rgba(200,144,62,0.03), transparent);">
-    <div class="demo-intro">
-        <div class="demo-intro-header reveal">
-            <span class="section-label">Operations</span>
-            <h2 class="section-title">See every feature in action</h2>
-            <p class="section-sub" style="margin: 0 auto;">Watch how KUBA simplifies your daily operations — from taking the first order to closing the day's accounts.</p>
-        </div>
-
-        <!-- Products -->
-        <div class="demo-grid" style="margin-bottom:80px;">
-            <div class="demo-text reveal-left">
-                <span class="section-label">Catalog</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Manage your menu with ease</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Add new items, set prices, upload photos, and organize everything into categories — all in one place. Mark today's specials with a single tap.</p>
-                <ul class="demo-feature-list">
-                    <li>Add products with images, price & tax settings</li>
-                    <li>Organize into categories like Brews, Pastries, Meals</li>
-                    <li>Tag items as "Chef's Special", "Vegan", "Featured"</li>
-                    <li>Set AI-powered cross-sell recommendations</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-right" data-src="{% static 'stock/product-section.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn" aria-label="Play">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/product-section.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn" aria-label="Play/Pause"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn" aria-label="Mute"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Floor & Tables -->
-        <div class="demo-grid reverse" style="margin-bottom:80px;">
-            <div class="demo-text reveal-right">
-                <span class="section-label">Floor Management</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Visual floor plan & table control</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Design your cafe's seating layout on an interactive canvas. Monitor which tables are live, locked, or free — and unlock them in one tap.</p>
-                <ul class="demo-feature-list">
-                    <li>Drag-and-drop table placement on a grid canvas</li>
-                    <li>Real-time occupied / free / reserved status</li>
-                    <li>Force-unlock tables from the admin panel</li>
-                    <li>Assign orders directly from the floor view</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-left" data-src="{% static 'stock/floor-table-config.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/floor-table-config.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Coupons -->
-        <div class="demo-grid" style="margin-bottom:80px;">
-            <div class="demo-text reveal-left">
-                <span class="section-label">Promotions</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Coupons & promos that drive sales</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Create discount codes for happy hours, special events, or loyalty rewards. Apply them directly at the POS terminal in one click.</p>
-                <ul class="demo-feature-list">
-                    <li>Percentage or fixed-amount discounts</li>
-                    <li>Time-limited happy hour promotions</li>
-                    <li>One-click coupon application at checkout</li>
-                    <li>Full audit trail of all discounts applied</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-right" data-src="{% static 'stock/cupons-promo-cofig.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/cupons-promo-cofig.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payment Methods -->
-        <div class="demo-grid reverse" style="margin-bottom:80px;">
-            <div class="demo-text reveal-right">
-                <span class="section-label">Payments</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Every payment method, configured your way</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Enable the payment methods that work for your cafe — cash, card, UPI QR, or custom integrations. Flexible and fast at checkout.</p>
-                <ul class="demo-feature-list">
-                    <li>Cash, Card & UPI QR support out of the box</li>
-                    <li>Enable or disable methods per cafe</li>
-                    <li>Fast split-payment and receipt generation</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-left" data-src="{% static 'stock/payment_config.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/payment_config.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Loyalty -->
-        <div class="demo-grid" style="margin-bottom:80px;">
-            <div class="demo-text reveal-left">
-                <span class="section-label">Loyalty</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Reward your regulars automatically</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Build lasting relationships with your customers. Track visit history, award points, and give perks — all handled automatically by KUBA.</p>
-                <ul class="demo-feature-list">
-                    <li>Customer profiles with visit history</li>
-                    <li>Automatic point accrual per order</li>
-                    <li>Redeem perks directly from POS checkout</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-right" data-src="{% static 'stock/loyality-cofnfig.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/loyality-cofnfig.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Receipts -->
-        <div class="demo-grid reverse" style="margin-bottom:80px;">
-            <div class="demo-text reveal-right">
-                <span class="section-label">Receipts</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Branded receipts your customers will love</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Customize every receipt with your logo, custom messages, social handles, and even a QR code linking to your review page.</p>
-                <ul class="demo-feature-list">
-                    <li>Add your cafe logo and brand color</li>
-                    <li>Custom thank you messages on every receipt</li>
-                    <li>QR code for Google / in-app reviews</li>
-                    <li>Email receipts directly to customers</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-left" data-src="{% static 'stock/receipts_config.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/receipts_config.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Feedback -->
-        <div class="demo-grid" style="margin-bottom:80px;">
-            <div class="demo-text reveal-left">
-                <span class="section-label">Insights</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Collect feedback that actually helps you grow</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Automatically send review emails after each visit. View ratings and comments in a live report dashboard to pinpoint what's working.</p>
-                <ul class="demo-feature-list">
-                    <li>Automated post-visit feedback emails</li>
-                    <li>Resend review request from the POS terminal</li>
-                    <li>Live feedback dashboard with trends & ratings</li>
-                    <li>Staff performance tied to customer ratings</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-right" data-src="{% static 'stock/feedback-config.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/feedback-config.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI Assistant -->
-        <div class="demo-grid reverse" style="margin-bottom:80px;">
-            <div class="demo-text reveal-right">
-                <span class="section-label">AI-Powered</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Your 24/7 AI cafe consultant</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Ask anything — from menu details to cross-sell recommendations. The AI Assistant understands your menu and helps your team deliver a personalized experience for every customer.</p>
-                <ul class="demo-feature-list">
-                    <li>Rich product cards generated from your live menu</li>
-                    <li>AI-powered cross-sell suggestions at checkout</li>
-                    <li>Ask about allergens, ingredients, or specials</li>
-                    <li>Available to your team 24/7 from any device</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-left" data-src="{% static 'stock/ai-assist-config.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/ai-assist-config.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Customize Cafe -->
-        <div class="demo-grid">
-            <div class="demo-text reveal-left">
-                <span class="section-label">Personalization</span>
-                <h3 class="section-title" style="font-size:1.9rem;">Make KUBA feel like yours</h3>
-                <div class="section-divider"></div>
-                <p class="section-sub">Upload your logo, set your brand colors, configure your cafe's unique URL, and manage staff accounts — all from a simple settings panel.</p>
-                <ul class="demo-feature-list">
-                    <li>Custom logo, name, and branding colors</li>
-                    <li>Manage staff roles and access levels</li>
-                    <li>Audit log for full team accountability</li>
-                    <li>Your own branded subdomain URL</li>
-                </ul>
-            </div>
-            <div class="video-player reveal-right" data-src="{% static 'stock/customize_your_cafe.mp4' %}">
-                <div class="vp-hover-label">▶ Hover to play</div>
-                <div class="vp-big-play">
-                    <button class="vp-big-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                </div>
-                <video muted playsinline preload="metadata">
-                    <source src="{% static 'stock/customize_your_cafe.mp4' %}" type="video/mp4" />
-                </video>
-                <div class="vp-controls">
-                    <div class="vp-progress"><div class="vp-progress-fill"></div></div>
-                    <div class="vp-row">
-                        <button class="vp-btn vp-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-                        <span class="vp-time">0:00 / 0:00</span>
-                        <div class="vp-spacer"></div>
-                        <div class="vp-volume-wrap">
-                            <button class="vp-btn vp-mute-btn"><svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15" stroke="white" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="white" stroke-width="2"/></svg></button>
-                            <input type="range" class="vp-volume" min="0" max="1" step="0.05" value="0" />
-                        </div>
-                        <button class="vp-btn vp-fs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- KITCHEN DISPLAY SECTION -->
-<section id="kitchen" class="kds-section">
+<!-- KDS SCREENSHOTS -->
+<section class="kds-section">
     <div class="kds-wrap">
-        <div class="reveal-left">
-            <span class="section-label">Kitchen</span>
-            <h2 class="section-title">Kitchen Display System — Live</h2>
-            <div class="section-divider"></div>
-            <p class="section-sub">Say goodbye to paper tickets and shouted orders. KUBA's Kitchen Display System shows every order in real time, organized and beautiful, directly on a screen in your kitchen.</p>
-            <ul class="demo-feature-list" style="margin-top:28px;">
-                <li>Orders appear instantly as they're placed</li>
-                <li>Tap to update status — New → Cooking → Ready</li>
-                <li>Color-coded urgency levels for long waits</li>
+        <div class="reveal left">
+            <span class="heading-label">Kitchen</span>
+            <h2 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:var(--espresso);margin-bottom:14px;">Kitchen Display System — Live</h2>
+            <div style="width:48px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--caramel),var(--amber));margin:0 0 20px;"></div>
+            <p style="color:var(--muted);line-height:1.8;margin-bottom:28px;">Say goodbye to paper tickets. Orders appear on the kitchen screen the instant they are placed. Chefs tap to update status — New, Cooking, Ready.</p>
+            <ul class="demo-list">
+                <li>Orders appear instantly via WebSocket push</li>
+                <li>Color-coded urgency for long-pending orders</li>
                 <li>Works on any tablet, monitor, or screen</li>
                 <li>Syncs automatically with the POS terminal</li>
             </ul>
         </div>
-        <div class="kds-screenshots reveal-right">
-            <div class="kds-img-wrap large" onclick="openLightbox('{% static 'stock/kds/home.png' %}')">
-                <img src="{% static 'stock/kds/home.png' %}" alt="Kitchen Display System Home" loading="lazy" />
+        <div class="kds-screenshots reveal right">
+            <div class="kds-shot" onclick="openLightbox('{% static 'stock/kds/home.png' %}')">
+                <img src="{% static 'stock/kds/home.png' %}" alt="KDS Home" loading="lazy">
             </div>
-            <div class="kds-img-wrap" onclick="openLightbox('{% static 'stock/kds/process.png' %}')">
-                <img src="{% static 'stock/kds/process.png' %}" alt="KDS Order Processing" loading="lazy" />
+            <div class="kds-shot" onclick="openLightbox('{% static 'stock/kds/process.png' %}')">
+                <img src="{% static 'stock/kds/process.png' %}" alt="KDS Processing" loading="lazy">
             </div>
-            <div class="kds-img-wrap" onclick="openLightbox('{% static 'stock/kds/completed.png' %}')">
-                <img src="{% static 'stock/kds/completed.png' %}" alt="KDS Completed Orders" loading="lazy" />
+            <div class="kds-shot" onclick="openLightbox('{% static 'stock/kds/completed.png' %}')">
+                <img src="{% static 'stock/kds/completed.png' %}" alt="KDS Completed" loading="lazy">
             </div>
         </div>
+    </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="review" id="reviews">
+    <div class="heading reveal">
+        <span class="heading-label">Reviews</span>
+        <h2>What cafe owners <span>say</span></h2>
+        <div class="heading-line"></div>
+    </div>
+    <div class="swiper review-slider reveal">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide review-card">
+                <div class="quote-open">"</div>
+                <div class="quote-close">"</div>
+                <div class="review-avatar"><img src="{% static 'stock/poc/add-customer.png' %}" alt="Reviewer" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect width=%2264%22 height=%2264%22 fill=%22%23d4a96a%22/><text x=%2232%22 y=%2240%22 font-size=%2228%22 text-anchor=%22middle%22 fill=%22white%22>R</text></svg>'"></div>
+                <div class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <p>KUBA completely transformed how we run our cafe. The POS is incredibly fast and the kitchen display means our baristas never miss an order.</p>
+                <h4>Riya Shah</h4>
+                <span>Founder, Blue Bottle Cafe</span>
+            </div>
+            <div class="swiper-slide review-card">
+                <div class="quote-open">"</div>
+                <div class="quote-close">"</div>
+                <div class="review-avatar"><img src="{% static 'stock/poc/home.png' %}" alt="Reviewer" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect width=%2264%22 height=%2264%22 fill=%22%23c8903e%22/><text x=%2232%22 y=%2240%22 font-size=%2228%22 text-anchor=%22middle%22 fill=%22white%22>A</text></svg>'"></div>
+                <div class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <p>The loyalty program and feedback emails have doubled our repeat customers. The AI assistant is genuinely useful for staff who get product questions.</p>
+                <h4>Arjun Mehta</h4>
+                <span>Owner, The Daily Grind</span>
+            </div>
+            <div class="swiper-slide review-card">
+                <div class="quote-open">"</div>
+                <div class="quote-close">"</div>
+                <div class="review-avatar"><img src="{% static 'stock/poc/oders.png' %}" alt="Reviewer" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect width=%2264%22 height=%2264%22 fill=%22%233b2412%22/><text x=%2232%22 y=%2240%22 font-size=%2228%22 text-anchor=%22middle%22 fill=%22white%22>P</text></svg>'"></div>
+                <div class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></div>
+                <p>Setting up was incredibly smooth. We had our subdomain, products, and first order processed within an hour of signing up. Incredible product.</p>
+                <h4>Priya Nair</h4>
+                <span>Manager, Roastery Co.</span>
+            </div>
+            <div class="swiper-slide review-card">
+                <div class="quote-open">"</div>
+                <div class="quote-close">"</div>
+                <div class="review-avatar"><img src="{% static 'stock/poc/cupons.png' %}" alt="Reviewer" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect width=%2264%22 height=%2264%22 fill=%22%23e6a83a%22/><text x=%2232%22 y=%2240%22 font-size=%2228%22 text-anchor=%22middle%22 fill=%22white%22>K</text></svg>'"></div>
+                <div class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <p>The coupon and promotion features are fantastic. We ran a happy hour campaign and saw a 40% uplift in afternoon sales. KUBA pays for itself.</p>
+                <h4>Kabir Joshi</h4>
+                <span>Founder, Cafe Bloom</span>
+            </div>
+        </div>
+        <div class="swiper-pagination"></div>
     </div>
 </section>
 
 <!-- POS GALLERY -->
-<section id="gallery" class="poc-section">
-    <div class="poc-wrap">
-        <div class="poc-header reveal">
-            <span class="section-label">POS Terminal Gallery</span>
-            <h2 class="section-title">A POS your staff will actually love using</h2>
-            <p class="section-sub">Designed for speed, clarity, and simplicity. From adding customers to processing coupons — it's all just one tap away.</p>
+<section class="gallery" id="gallery">
+    <div class="heading reveal">
+        <span class="heading-label">POS Terminal Gallery</span>
+        <h2>A POS your staff will <span>love</span></h2>
+        <div class="heading-line"></div>
+    </div>
+    <div class="poc-grid">
+        <div class="poc-item large reveal d1" onclick="openLightbox('{% static 'stock/poc/front.png' %}')">
+            <img src="{% static 'stock/poc/front.png' %}" alt="POS Front View" loading="lazy">
+            <div class="poc-label">POS Terminal — Main View</div>
         </div>
-        <div class="poc-gallery">
-            <div class="poc-img-wrap large reveal reveal-delay-1" onclick="openLightbox('{% static 'stock/poc/front.png' %}')">
-                <img src="{% static 'stock/poc/front.png' %}" alt="POS Terminal Front View" loading="lazy" />
-                <div class="poc-img-label">POS Terminal — Main View</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-2" onclick="openLightbox('{% static 'stock/poc/home.png' %}')">
-                <img src="{% static 'stock/poc/home.png' %}" alt="POS Home" loading="lazy" />
-                <div class="poc-img-label">Dashboard Home</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-3" onclick="openLightbox('{% static 'stock/poc/oders.png' %}')">
-                <img src="{% static 'stock/poc/oders.png' %}" alt="POS Orders" loading="lazy" />
-                <div class="poc-img-label">Active Orders View</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-1" onclick="openLightbox('{% static 'stock/poc/add-customer.png' %}')">
-                <img src="{% static 'stock/poc/add-customer.png' %}" alt="Add Customer" loading="lazy" />
-                <div class="poc-img-label">Add Customer at Checkout</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-2" onclick="openLightbox('{% static 'stock/poc/cupons.png' %}')">
-                <img src="{% static 'stock/poc/cupons.png' %}" alt="Coupons at POS" loading="lazy" />
-                <div class="poc-img-label">Apply Coupons at POS</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-3" onclick="openLightbox('{% static 'stock/poc/table lock.png' %}')">
-                <img src="{% static 'stock/poc/table lock.png' %}" alt="Table Lock" loading="lazy" />
-                <div class="poc-img-label">Table Lock & Status</div>
-            </div>
-            <div class="poc-img-wrap large reveal reveal-delay-1" onclick="openLightbox('{% static 'stock/poc/mailing feedback form.png' %}')">
-                <img src="{% static 'stock/poc/mailing feedback form.png' %}" alt="Feedback Email" loading="lazy" />
-                <div class="poc-img-label">Feedback Email from POS</div>
-            </div>
-            <div class="poc-img-wrap reveal reveal-delay-2" onclick="openLightbox('{% static 'stock/poc/customer pop.png' %}')">
-                <img src="{% static 'stock/poc/customer pop.png' %}" alt="Customer Popup" loading="lazy" />
-                <div class="poc-img-label">Customer Profile Popup</div>
-            </div>
+        <div class="poc-item reveal d2" onclick="openLightbox('{% static 'stock/poc/home.png' %}')">
+            <img src="{% static 'stock/poc/home.png' %}" alt="Dashboard Home" loading="lazy">
+            <div class="poc-label">Dashboard Home</div>
+        </div>
+        <div class="poc-item reveal d3" onclick="openLightbox('{% static 'stock/poc/oders.png' %}')">
+            <img src="{% static 'stock/poc/oders.png' %}" alt="Active Orders" loading="lazy">
+            <div class="poc-label">Active Orders View</div>
+        </div>
+        <div class="poc-item reveal d1" onclick="openLightbox('{% static 'stock/poc/add-customer.png' %}')">
+            <img src="{% static 'stock/poc/add-customer.png' %}" alt="Add Customer" loading="lazy">
+            <div class="poc-label">Add Customer at Checkout</div>
+        </div>
+        <div class="poc-item reveal d2" onclick="openLightbox('{% static 'stock/poc/cupons.png' %}')">
+            <img src="{% static 'stock/poc/cupons.png' %}" alt="Coupons" loading="lazy">
+            <div class="poc-label">Apply Coupons at POS</div>
+        </div>
+        <div class="poc-item large reveal d3" onclick="openLightbox('{% static 'stock/poc/mailing feedback form.png' %}')">
+            <img src="{% static 'stock/poc/mailing feedback form.png' %}" alt="Feedback Email" loading="lazy">
+            <div class="poc-label">Feedback Email from POS</div>
+        </div>
+        <div class="poc-item reveal d1" onclick="openLightbox('{% static 'stock/poc/table lock.png' %}')">
+            <img src="{% static 'stock/poc/table lock.png' %}" alt="Table Lock" loading="lazy">
+            <div class="poc-label">Table Lock & Status</div>
+        </div>
+        <div class="poc-item reveal d2" onclick="openLightbox('{% static 'stock/poc/customer pop.png' %}')">
+            <img src="{% static 'stock/poc/customer pop.png' %}" alt="Customer Popup" loading="lazy">
+            <div class="poc-label">Customer Profile Popup</div>
         </div>
     </div>
 </section>
 
-<!-- CTA SECTION -->
-<section class="cta-section">
-    <div class="cta-wrap reveal">
-        <span class="cta-emoji">☕</span>
-        <h2 class="cta-title">Ready to brew something great?</h2>
-        <p class="cta-sub">Join cafes already using KUBA to simplify their operations, delight their customers, and grow their business — one order at a time.</p>
-        <div class="cta-buttons">
-            <a href="{% url 'account_signup' %}" class="btn-hero btn-hero-primary">
-                Create your free cafe →
-            </a>
-            <a href="{% url 'account_login' %}" class="btn-hero btn-hero-secondary">
-                Sign in to your account
-            </a>
+<!-- CTA / CONTACT -->
+<section class="cta-section" id="contact">
+    <div class="cta-wrap">
+        <div class="cta-grid">
+            <div class="cta-text reveal left">
+                <h2>Ready to brew something <em>great?</em></h2>
+                <p>Join cafes already using KUBA to simplify their operations, delight their customers, and grow their business — one order at a time.</p>
+                <div class="cta-buttons">
+                    <a href="{% url 'account_signup' %}" class="btn">Create your free cafe &rarr;</a>
+                    <a href="{% url 'account_login' %}" class="btn btn-light">Sign in</a>
+                </div>
+            </div>
+            <div class="cta-form reveal right">
+                <div class="form-title">Get in touch</div>
+                <form>
+                    <div class="form-group"><input type="text" placeholder="Your Name" class="form-input"></div>
+                    <div class="form-group"><input type="email" placeholder="Email Address" class="form-input"></div>
+                    <div class="form-group"><input type="text" placeholder="Cafe Name" class="form-input"></div>
+                    <div class="form-group"><textarea placeholder="Tell us about your cafe..." class="form-input textarea"></textarea></div>
+                    <button type="submit" class="btn btn-full">Send Message</button>
+                </form>
+            </div>
         </div>
     </div>
 </section>
 
 <!-- FOOTER -->
-<footer>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <div class="nav-logo-icon" style="width:28px;height:28px;border-radius:8px;">
-            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#1a1209;fill:none;stroke-width:2;stroke-linecap:round;"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-brand">
+            <a href="/" class="logo">
+                <div class="logo-icon"><i class="fas fa-mug-hot"></i></div>
+                KUBA
+            </a>
+            <p>The all-in-one POS platform for modern cafes. Every order, every table, every customer — managed beautifully.</p>
         </div>
-        <span style="font-weight:700;letter-spacing:0.05em;">KUBA</span>
-        <span style="color:var(--text-muted);">— The Cafe POS Platform</span>
+        <div class="footer-col">
+            <h4>Platform</h4>
+            <a href="#features">POS Terminal</a>
+            <a href="#features">Kitchen Display</a>
+            <a href="#features">AI Assistant</a>
+            <a href="#features">Loyalty Program</a>
+            <a href="#features">Feedback Reports</a>
+        </div>
+        <div class="footer-col">
+            <h4>Quick Links</h4>
+            <a href="#home">Home</a>
+            <a href="#about">About</a>
+            <a href="#demos">Demos</a>
+            <a href="#reviews">Reviews</a>
+            <a href="#contact">Contact</a>
+        </div>
+        <div class="footer-col">
+            <h4>Account</h4>
+            <a href="{% url 'account_login' %}">Sign In</a>
+            <a href="{% url 'account_signup' %}">Create Cafe</a>
+        </div>
     </div>
-    <div>© 2025 KUBA. Built with ☕ for modern cafes.</div>
-    <div style="display:flex;gap:24px;">
-        <a href="{% url 'account_login' %}">Sign In</a>
-        <a href="{% url 'account_signup' %}">Get Started</a>
-    </div>
+    <div class="footer-credit">Built with care by the KUBA team &mdash; All rights reserved &copy; 2025</div>
 </footer>
+</main>
 
+<script src="https://unpkg.com/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    // ── Scroll Reveal ──
-    const reveals = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('visible');
-        });
-    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
-    reveals.forEach(el => observer.observe(el));
-
-    // ── Nav Scroll Shadow ──
+    // Header scroll
     window.addEventListener('scroll', () => {
-        document.getElementById('main-nav').style.boxShadow =
-            window.scrollY > 20 ? '0 4px 32px rgba(0,0,0,0.5)' : 'none';
+        document.getElementById('main-header').classList.toggle('scrolled', window.scrollY > 20);
     });
 
-    // ── Lightbox ──
+    // Scroll reveal
+    const revEls = document.querySelectorAll('.reveal');
+    const revObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    revEls.forEach(el => revObs.observe(el));
+
+    // Swiper reviews
+    new Swiper('.review-slider', {
+        slidesPerView: 1,
+        spaceBetween: 24,
+        pagination: { el: '.swiper-pagination', clickable: true },
+        breakpoints: {
+            640:  { slidesPerView: 2 },
+            1024: { slidesPerView: 3 }
+        }
+    });
+
+    // Lightbox
     function openLightbox(src) {
-        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lb-img').src = src;
         document.getElementById('lightbox').classList.add('open');
         document.body.style.overflow = 'hidden';
     }
     function closeLightbox() {
         document.getElementById('lightbox').classList.remove('open');
-        document.body.style.overflow = '';
-    }
-    document.getElementById('lightbox').addEventListener('click', function(e) {
-        if (e.target === this) closeLightbox();
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
-
-    // ── Custom Video Players ──
-    const PLAY_ICON  = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>`;
-    const PAUSE_ICON = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
-    const VOL_ICON   = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
-    const MUTE_ICON  = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
-
-    function fmt(s) {
-        if (isNaN(s)) return '0:00';
-        const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-        return `${m}:${sec.toString().padStart(2,'0')}`;
+        document.body.style.overflow = 'auto';
     }
 
-    document.querySelectorAll('.video-player').forEach(player => {
-        const video    = player.querySelector('video');
-        const bigPlay  = player.querySelector('.vp-big-play');
-        const bigBtn   = player.querySelector('.vp-big-play-btn');
-        const playBtn  = player.querySelector('.vp-play-btn');
-        const muteBtn  = player.querySelector('.vp-mute-btn');
-        const fsBtn    = player.querySelector('.vp-fs-btn');
-        const progress = player.querySelector('.vp-progress');
-        const fill     = player.querySelector('.vp-progress-fill');
-        const timeEl   = player.querySelector('.vp-time');
-        const volSlider= player.querySelector('.vp-volume');
-        let hoverTimer = null;
-        let started    = false;
+    // ── HERO BOOMERANG & PARALLAX LOGIC ──
+    const heroVideo = document.getElementById('hero-video');
+    const heroCanvas = document.getElementById('hero-canvas');
+    const heroTitleCtn = document.getElementById('hero-title-ctn');
+    const heroBottom = document.getElementById('hero-bottom');
+    const heroBg = document.getElementById('hero-bg');
 
-        // Init mute icon
-        muteBtn.innerHTML = MUTE_ICON;
-        video.volume = 0;
+    if (heroVideo && heroCanvas) {
+        const ctx = heroCanvas.getContext('2d');
+        let frames = [];
+        let capturing = true;
+        let lastTime = -1;
+        const MAX_WIDTH = 960;
 
-        // Update duration when metadata loads
-        video.addEventListener('loadedmetadata', () => {
-            timeEl.textContent = `0:00 / ${fmt(video.duration)}`;
-        });
+        // Trigger mounted animations
+        setTimeout(() => {
+            if(heroTitleCtn) heroTitleCtn.classList.add('mounted');
+            if(heroBottom) heroBottom.classList.add('mounted');
+        }, 100);
 
-        // Sync progress
-        video.addEventListener('timeupdate', () => {
-            if (!video.duration) return;
-            fill.style.width = (video.currentTime / video.duration * 100) + '%';
-            timeEl.textContent = `${fmt(video.currentTime)} / ${fmt(video.duration)}`;
-        });
-
-        // When video ends — show big play again
-        video.addEventListener('ended', () => {
-            player.classList.remove('vp-paused');
-            playBtn.innerHTML = PLAY_ICON;
-            bigPlay.classList.remove('hidden');
-            started = false;
-        });
-
-        function doPlay() {
-            video.play();
-            playBtn.innerHTML = PAUSE_ICON;
-            player.classList.remove('vp-paused');
-            bigPlay.classList.add('hidden');
-            started = true;
-        }
-        function doPause() {
-            video.pause();
-            playBtn.innerHTML = PLAY_ICON;
-            player.classList.add('vp-paused');
-        }
-        function togglePlay() {
-            if (video.paused) doPlay(); else doPause();
-        }
-
-        // Hover: play after short delay
-        player.addEventListener('mouseenter', () => {
-            if (!started) {
-                hoverTimer = setTimeout(() => doPlay(), 300);
+        function captureFrame() {
+            if (!capturing || heroVideo.readyState < 2) return;
+            if (heroVideo.currentTime !== lastTime) {
+                lastTime = heroVideo.currentTime;
+                const scale = Math.min(1, MAX_WIDTH / heroVideo.videoWidth);
+                const w = heroVideo.videoWidth * scale;
+                const h = heroVideo.videoHeight * scale;
+                const offscreen = document.createElement('canvas');
+                offscreen.width = w;
+                offscreen.height = h;
+                offscreen.getContext('2d').drawImage(heroVideo, 0, 0, w, h);
+                frames.push(offscreen);
             }
-        });
-        player.addEventListener('mouseleave', () => {
-            clearTimeout(hoverTimer);
-            // Only auto-pause if it hasn't been manually started (first-hover play)
-            if (!player.classList.contains('vp-paused') && video.currentTime < 0.5) {
-                video.pause();
-                video.currentTime = 0;
-                fill.style.width = '0%';
-                started = false;
-                playBtn.innerHTML = PLAY_ICON;
+            if (capturing) {
+                if ('requestVideoFrameCallback' in heroVideo) {
+                    heroVideo.requestVideoFrameCallback(captureFrame);
+                } else {
+                    requestAnimationFrame(captureFrame);
+                }
+            }
+        }
+
+        heroVideo.addEventListener('loadedmetadata', () => {
+            heroVideo.play().catch(()=>{});
+            if ('requestVideoFrameCallback' in heroVideo) {
+                heroVideo.requestVideoFrameCallback(captureFrame);
+            } else {
+                requestAnimationFrame(captureFrame);
             }
         });
 
-        // Click on video itself toggles play
-        video.addEventListener('click', togglePlay);
-        // Big play button
-        bigBtn.addEventListener('click', (e) => { e.stopPropagation(); doPlay(); });
-        // Controls play button
-        playBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
-
-        // Progress bar seek
-        progress.addEventListener('click', (e) => {
-            if (!video.duration) return;
-            const rect = progress.getBoundingClientRect();
-            video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
+        heroVideo.addEventListener('ended', () => {
+            capturing = false;
+            heroVideo.style.display = 'none';
+            heroCanvas.style.display = 'block';
+            heroCanvas.width = frames[0].width;
+            heroCanvas.height = frames[0].height;
+            startBoomerang();
         });
 
-        // Volume slider
-        volSlider.addEventListener('input', () => {
-            video.volume = parseFloat(volSlider.value);
-            video.muted  = video.volume === 0;
-            muteBtn.innerHTML = video.volume === 0 ? MUTE_ICON : VOL_ICON;
+        function startBoomerang() {
+            let index = 0;
+            let direction = 1;
+            let last = performance.now();
+            const interval = 1000 / 30; // 30fps
+
+            function render(now) {
+                if (now - last >= interval) {
+                    ctx.drawImage(frames[index], 0, 0, heroCanvas.width, heroCanvas.height);
+                    index += direction;
+                    if (index >= frames.length - 1) {
+                        index = frames.length - 1;
+                        direction = -1;
+                    } else if (index <= 0) {
+                        index = 0;
+                        direction = 1;
+                    }
+                    last = now;
+                }
+                requestAnimationFrame(render);
+            }
+            requestAnimationFrame(render);
+        }
+
+        // GSAP Parallax
+        if (typeof gsap !== 'undefined' && heroBg) {
+            let targetX = 0, targetY = 0;
+            let currentX = 0, currentY = 0;
+            const strength = 20;
+
+            document.addEventListener('mousemove', (e) => {
+                const cx = window.innerWidth / 2;
+                const cy = window.innerHeight / 2;
+                targetX = ((e.clientX - cx) / cx) * strength;
+                targetY = ((e.clientY - cy) / cy) * strength;
+            });
+
+            function parallaxLoop() {
+                currentX += (targetX - currentX) * 0.06;
+                currentY += (targetY - currentY) * 0.06;
+                gsap.set(heroBg, { x: currentX, y: currentY });
+                requestAnimationFrame(parallaxLoop);
+            }
+            parallaxLoop();
+        }
+    }
+
+    document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target===this) closeLightbox(); });
+    document.addEventListener('keydown', e => { if (e.key==='Escape') closeLightbox(); });
+
+    // Video Players
+    const PI = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>`;
+    const PA = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+    const VM = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+    const VX = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="white"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+
+    function fmtT(s) { if (isNaN(s)) return '0:00'; const m=Math.floor(s/60),sec=Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`; }
+
+    document.querySelectorAll('[data-vp]').forEach(wrap => {
+        const vid   = wrap.querySelector('video');
+        const bplay = wrap.querySelector('.vp-big-play');
+        const bbtn  = wrap.querySelector('.vp-big-play-btn');
+        const pbtn  = wrap.querySelector('.vp-play');
+        const mbtn  = wrap.querySelector('.vp-mute');
+        const fbtn  = wrap.querySelector('.vp-fs');
+        const prog  = wrap.querySelector('.vp-progress');
+        const fill  = wrap.querySelector('.vp-fill');
+        const tme   = wrap.querySelector('.vp-time');
+        const vol   = wrap.querySelector('.vp-vol');
+        let timer   = null, started = false;
+
+        mbtn.innerHTML = VX; vid.volume = 0;
+
+        vid.addEventListener('loadedmetadata', () => { tme.textContent = `0:00 / ${fmtT(vid.duration)}`; });
+        vid.addEventListener('timeupdate', () => {
+            if (!vid.duration) return;
+            fill.style.width = (vid.currentTime/vid.duration*100)+'%';
+            tme.textContent = `${fmtT(vid.currentTime)} / ${fmtT(vid.duration)}`;
+        });
+        vid.addEventListener('ended', () => {
+            wrap.classList.remove('paused'); pbtn.innerHTML = PI;
+            bplay.classList.remove('gone'); started = false;
         });
 
-        // Mute button
-        muteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            video.muted = !video.muted;
-            muteBtn.innerHTML = video.muted ? MUTE_ICON : VOL_ICON;
-            volSlider.value   = video.muted ? 0 : (video.volume || 0.7);
-            if (!video.muted && video.volume === 0) video.volume = 0.7;
-        });
+        const play = () => { vid.play(); pbtn.innerHTML=PA; wrap.classList.remove('paused'); bplay.classList.add('gone'); started=true; };
+        const pause = () => { vid.pause(); pbtn.innerHTML=PI; wrap.classList.add('paused'); };
+        const toggle = () => vid.paused ? play() : pause();
 
-        // Fullscreen
-        fsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (player.requestFullscreen)        player.requestFullscreen();
-            else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
-        });
+        wrap.addEventListener('mouseenter', () => { if (!started) timer = setTimeout(play, 350); });
+        wrap.addEventListener('mouseleave', () => { clearTimeout(timer); if (!started && !wrap.classList.contains('paused')) { vid.pause(); vid.currentTime=0; fill.style.width='0%'; } });
+        vid.addEventListener('click', toggle);
+        bbtn.addEventListener('click', e => { e.stopPropagation(); play(); });
+        pbtn.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+        prog.addEventListener('click', e => { if (!vid.duration) return; const r=prog.getBoundingClientRect(); vid.currentTime=((e.clientX-r.left)/r.width)*vid.duration; });
+        vol.addEventListener('input', () => { vid.volume=parseFloat(vol.value); vid.muted=vid.volume===0; mbtn.innerHTML=vid.volume===0?VX:VM; });
+        mbtn.addEventListener('click', e => { e.stopPropagation(); vid.muted=!vid.muted; mbtn.innerHTML=vid.muted?VX:VM; vol.value=vid.muted?0:(vid.volume||0.7); if(!vid.muted&&vid.volume===0)vid.volume=0.7; });
+        fbtn.addEventListener('click', e => { e.stopPropagation(); (wrap.requestFullscreen||wrap.webkitRequestFullscreen).call(wrap); });
     });
 </script>
-
 </body>
 </html>
