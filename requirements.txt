@@ -1,0 +1,4 @@
+django
+pillow
+dotenv
+django-allauth

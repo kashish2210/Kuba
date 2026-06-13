@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Login | Kuba{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+  <div class="auth-card reveal">
+    <p class="eyebrow">Organisation admin</p>
+    <h1>Login to Kuba</h1>
+    <p class="auth-intro">Use the email and password shared by the super admin. After login, you will be redirected to the cafe POS admin dashboard.</p>
+
+    {% if form.non_field_errors %}
+      <div class="form-errors">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'account_login' %}" class="auth-form">
+      {% csrf_token %}
+      {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+      {% endif %}
+
+      <label for="{{ form.login.id_for_label }}">Email</label>
+      {{ form.login }}
+      {% if form.login.errors %}<div class="field-error">{{ form.login.errors }}</div>{% endif %}
+
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {% if form.password.errors %}<div class="field-error">{{ form.password.errors }}</div>{% endif %}
+
+      {% if form.remember %}
+        <label class="remember-row">
+          {{ form.remember }}
+          <span>Remember this device</span>
+        </label>
+      {% endif %}
+
+      <button class="button button-primary auth-submit" type="submit">
+        <span>Continue to dashboard</span>
+        <span class="button-icon" aria-hidden="true">→</span>
+      </button>
+    </form>
+
+    <p class="auth-footnote">Need access? Contact the Kuba super admin so your organisation can be created first.</p>
+  </div>
+</section>
+{% endblock %}

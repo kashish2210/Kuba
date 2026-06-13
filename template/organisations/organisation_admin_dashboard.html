@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Organisation Admin | Kuba{% endblock %}
+
+{% block content %}
+<section class="admin-section">
+  <div class="admin-shell">
+    <div class="admin-heading reveal">
+      <p class="eyebrow">Organisation admin</p>
+      {% if organisation %}
+        <h1>{{ organisation.name }} dashboard.</h1>
+        <p>This is the starter admin page for the cafe organisation. Next, this space can grow into employee setup, POS sessions, products, categories, floors, tables, KDS, payments, coupons, and reports.</p>
+      {% else %}
+        <h1>No organisation connected yet.</h1>
+        <p>Your account is active, but it is not linked to an organisation. Ask the super admin to connect your user to a cafe organisation.</p>
+      {% endif %}
+    </div>
+
+    <div class="dashboard-grid">
+      <article class="dashboard-card reveal">
+        <span class="feature-number">01</span>
+        <h2>Employees</h2>
+        <p>Create cashier and floor staff accounts for the POS terminal.</p>
+      </article>
+      <article class="dashboard-card reveal">
+        <span class="feature-number">02</span>
+        <h2>Products</h2>
+        <p>Prepare categories, pricing, taxes, unit of measure, and descriptions.</p>
+      </article>
+      <article class="dashboard-card reveal">
+        <span class="feature-number">03</span>
+        <h2>Floor plan</h2>
+        <p>Add floors and tables so employees can start orders by table.</p>
+      </article>
+      <article class="dashboard-card reveal">
+        <span class="feature-number">04</span>
+        <h2>Reports</h2>
+        <p>Review orders, revenue, average order value, top products, and categories.</p>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+<header class="site-header" data-header>
+  <a class="brand" href="{% url 'landing' %}" aria-label="Kuba home">
+    <span class="brand-mark">K</span>
+    <span>Kuba</span>
+  </a>
+  <nav class="nav-links" aria-label="Primary navigation">
+    <a href="#story">Story</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#features">Features</a>
+    {% if user.is_authenticated and user.is_superuser %}
+      <a href="{% url 'super_admin_organisations' %}">Organisations</a>
+    {% elif user.is_authenticated %}
+      <a href="{% url 'organisation_admin_dashboard' %}">Dashboard</a>
+    {% endif %}
+    <a href="#contact">Contact</a>
+  </nav>
+  {% if user.is_authenticated %}
+    <a class="header-cta" href="{% url 'account_logout' %}">Logout</a>
+  {% else %}
+    <a class="header-cta" href="{% url 'account_signup' %}">Get started</a>
+  {% endif %}
+</header>

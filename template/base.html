@@ -1,0 +1,26 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <title>{% block title %}Kuba Cafe POS{% endblock %}</title>
+  <meta name="description" content="{% block description %}Kuba helps cafe owners manage POS access, employees, tables, kitchen orders, payments, and reports from one calm admin dashboard.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% include 'header.html' %}
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+  {% include 'footer.html' %}
+  <script src="{% static 'js/main.js' %}" defer></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
