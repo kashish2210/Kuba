@@ -484,15 +484,62 @@
 
     function updatePayDetail() {
       var box = $("pay-detail");
+      var keypad = $("keypad");
+      if (keypad) keypad.style.display = "grid";
+
       if (!order || !method) { box.innerHTML = ""; return; }
+
+      var backHtml = '<div class="pay-detail-back-wrap"><button class="pay-detail-back" id="pay-back-btn">← Back to Payment Methods</button></div>';
+
       if (method === "cash") {
-        box.innerHTML = '<input id="pay-input" inputmode="decimal" placeholder="Amount tendered"><div class="change" id="change"></div>';
+        box.innerHTML = backHtml + '<div class="cash-pay-wrap"><input id="pay-input" inputmode="decimal" placeholder="Amount tendered"><div class="change" id="change"></div></div>';
         $("pay-input").addEventListener("input", updateChange);
       } else if (method === "upi") {
-        box.innerHTML = '<img id="upi-qr" alt="UPI QR"><div style="text-align:center;color:#9a948c;font-size:.85rem;">Scan to pay ' + money(order.total) + "</div>";
+        if (keypad) keypad.style.display = "none";
+
+        var html = 
+          backHtml +
+          '<div class="upi-card-minimal">' +
+            '<div class="upi-qr-box-minimal">' +
+              '<img id="upi-qr" class="upi-qr-img-minimal" alt="UPI QR">' +
+            '</div>' +
+            '<div class="upi-details-minimal">' +
+              '<div class="upi-status-minimal">Scan to pay · ₹' + (order ? Number(order.total).toFixed(2) : '0.00') + '</div>' +
+            '</div>' +
+          '</div>';
+
+        box.innerHTML = html;
         $("upi-qr").src = orderUrl("upi-qr/") + "?t=" + Date.now();
+
+        // Show green "Paid" button immediately when QR is displayed
+        var payBtn = $("btn-pay");
+        if (payBtn) {
+          payBtn.textContent = "✔ Paid";
+          payBtn.style.background = "#2e7d5e";
+          payBtn.style.color = "#fff";
+          payBtn.style.pointerEvents = "auto";
+        }
       } else if (method === "card" || method === "razorpay") {
-        box.innerHTML = '<div style="text-align:center;color:#9a948c;font-size:.85rem;">Pay online via Razorpay</div>';
+        box.innerHTML = backHtml + '<div style="text-align:center;color:#9a948c;font-size:.85rem;padding: 16px 0;">Pay online via Razorpay</div>';
+      }
+
+      // Attach back arrow handler
+      var backBtn = $("pay-back-btn");
+      if (backBtn) {
+        backBtn.addEventListener("click", function () {
+          method = null;
+          document.querySelectorAll(".pay-method").forEach(function (b) { b.classList.remove("active"); });
+          $("pay-method-label").textContent = "";
+          box.innerHTML = "";
+          if (keypad) keypad.style.display = "grid";
+          // Reset Pay button
+          var payBtn = $("btn-pay");
+          if (payBtn) {
+            payBtn.textContent = "Pay";
+            payBtn.style.background = "";
+            payBtn.style.color = "";
+          }
+        });
       }
     }
 
@@ -527,7 +574,13 @@
           $("btn-customer").click();
           return;
       }
-      
+
+      // UPI: show confirmation popup before marking paid
+      if (method === "upi") {
+        $("upi-confirm-modal").hidden = false;
+        return;
+      }
+
       if (method === "razorpay" || method === "card") {
         api(orderUrl("razorpay/create/"), "POST", {}).then(function (data) {
           if (!window.POS.razorpayKeyId) {
@@ -564,6 +617,15 @@
       api(orderUrl("pay/"), "POST", body).then(showReceipt).catch(showErr);
     });
 
+    // UPI confirmation modal
+    $("upi-confirm-yes").addEventListener("click", function () {
+      $("upi-confirm-modal").hidden = true;
+      api(orderUrl("pay/"), "POST", { method_type: "upi" }).then(showReceipt).catch(showErr);
+    });
+    $("upi-confirm-no").addEventListener("click", function () {
+      $("upi-confirm-modal").hidden = true;
+    });
+
     var paidOrderId = null;
     var paidCustomerEmail = "";
     function showReceipt(d) {
@@ -576,6 +638,20 @@
         (d.change_due ? "<div>Change due: " + money(d.change_due) + "</div>" : "") +
         '<div class="r-total">Paid ' + money(d.total) + "</div>" +
         (d.receipt_emailed ? '<div style="color:#34b27b;font-size:.85rem;margin-top:6px;">✓ Receipt emailed to ' + paidCustomerEmail + "</div>" : "");
+
+      // For UPI: hide the email receipt button
+      var emailBtn = $("btn-email-receipt");
+      if (emailBtn) emailBtn.hidden = (d.method === "upi");
+
+      // Lock the Pay button
+      var payBtn = $("btn-pay");
+      if (payBtn) {
+        payBtn.textContent = "✔ Paid";
+        payBtn.style.background = "#2e7d5e";
+        payBtn.style.color = "#fff";
+        payBtn.style.pointerEvents = "none";
+      }
+
       $("receipt-modal").hidden = false;
     }
 
@@ -596,6 +672,17 @@
       document.querySelectorAll(".pay-method").forEach(function (b) { b.classList.remove("active"); });
       $("pay-method-label").textContent = "";
       $("pay-detail").innerHTML = "";
+      // Reset Pay button state
+      var payBtn = $("btn-pay");
+      if (payBtn) {
+        payBtn.textContent = "Pay";
+        payBtn.style.background = "";
+        payBtn.style.color = "";
+        payBtn.style.pointerEvents = "";
+      }
+      // Restore keypad visibility
+      var keypad = $("keypad");
+      if (keypad) keypad.style.display = "grid";
       renderCart();
       openFloor();
     });

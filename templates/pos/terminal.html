@@ -188,6 +188,22 @@
 
 
 
+<!-- UPI payment confirmation modal -->
+<div class="pos-modal" id="upi-confirm-modal" hidden>
+    <div class="pos-modal-card pos-modal-sm">
+        <div class="pos-modal-head">
+            <h3>Confirm Payment</h3>
+        </div>
+        <div class="upi-confirm-body">
+            <p class="upi-confirm-msg">Has the customer completed the UPI payment?</p>
+            <div class="upi-confirm-actions">
+                <button class="upi-confirm-btn upi-confirm-btn-no" id="upi-confirm-no">✕ Not yet</button>
+                <button class="upi-confirm-btn upi-confirm-btn-yes" id="upi-confirm-yes">✔ Yes, Paid</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Receipt modal -->
 <div class="pos-modal" id="receipt-modal" hidden>
     <div class="pos-modal-card pos-modal-sm">
