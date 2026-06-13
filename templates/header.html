@@ -97,13 +97,13 @@
 
         <div class="sidebar-section-label">Kitchen</div>
 
-        <a href="{% url 'dashboard:kds' %}" class="sidebar-link {% if request.resolver_match.url_name == 'kds' %}active{% endif %}" id="nav-kds">
+        <a href="{% url 'pos:kds' %}" class="sidebar-link" id="nav-kds" target="_blank">
             <svg viewBox="0 0 24 24">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
                 <line x1="4" y1="22" x2="4" y2="15"/>
             </svg>
             Kitchen Display
-            <span class="sidebar-badge">Soon</span>
+            <span class="sidebar-badge" style="background:#e7f6ec;color:#15803d;">Live</span>
         </a>
 
         <div class="sidebar-section-label">Management</div>

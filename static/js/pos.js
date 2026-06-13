@@ -130,7 +130,50 @@
       else { row.hidden = true; }
     }
 
-    function setOrder(data) { order = data; renderCart(); }
+    function setOrder(data) {
+      order = data;
+      renderCart();
+      autoApplyPromotion();
+    }
+
+    function autoApplyPromotion() {
+      if (!order) return;
+      /* Don't override a manually applied coupon or manual discount */
+      if (order.coupon_id || (order.promotion_id && !order._auto_promo)) return;
+      var promos = (window.POS.promotions || []).filter(function(p) {
+        if (p.apply_to === 'order') {
+          return p.min_order_amount !== null && order.subtotal >= p.min_order_amount;
+        }
+        if (p.apply_to === 'product') {
+          var qty = (order.lines || [])
+            .filter(function(l) { return l.product_id === p.product_id; })
+            .reduce(function(s, l) { return s + l.quantity; }, 0);
+          return p.min_quantity !== null && qty >= p.min_quantity;
+        }
+        return false;
+      });
+      if (!promos.length) {
+        /* clear auto-promo if conditions no longer met */
+        if (order.promotion_id && order.discount_amount > 0) {
+          api(orderUrl("discount/"), "POST", { amount: 0 }).then(function(d) {
+            order = d; renderCart();
+          }).catch(function(){});
+        }
+        return;
+      }
+      /* pick best: highest potential discount */
+      promos.sort(function(a, b) {
+        var da = a.discount_type === 'percentage' ? order.subtotal * a.discount_value / 100 : a.discount_value;
+        var db = b.discount_type === 'percentage' ? order.subtotal * b.discount_value / 100 : b.discount_value;
+        return db - da;
+      });
+      var best = promos[0];
+      if (order.promotion_id === best.id) return; /* already applied */
+      api(orderUrl("discount/"), "POST", { promotion_id: best.id }).then(function(d) {
+        d._auto_promo = true;
+        order = d; renderCart();
+      }).catch(function(){});
+    }
 
     // ── Products: filter + add ───────────────────────────────────────────────
     document.querySelectorAll(".cat-tab").forEach(function (tab) {

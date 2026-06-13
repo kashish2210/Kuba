@@ -9,6 +9,7 @@ class Profile(models.Model):
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
         CASHIER = "cashier", "Cashier"
+        KITCHEN = "kitchen", "Kitchen Display"
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

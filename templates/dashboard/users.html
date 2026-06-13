@@ -20,7 +20,9 @@
                     <td><strong>{{ m.user.username }}</strong></td>
                     <td class="text-sm">{{ m.user.email|default:"—" }}</td>
                     <td>
-                        {% if m.role == 'admin' %}<span class="badge badge-primary">Admin</span>{% else %}<span class="badge badge-neutral">Cashier</span>{% endif %}
+                        {% if m.role == 'admin' %}<span class="badge badge-primary">Admin</span>
+                        {% elif m.role == 'kitchen' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Kitchen</span>
+                        {% else %}<span class="badge badge-neutral">Cashier</span>{% endif %}
                     </td>
                     <td>{% if m.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</td>
                     <td class="text-right">
@@ -36,6 +38,10 @@
                         <form method="post" action="{% url 'dashboard:user-archive' m.id %}" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-secondary btn-sm">{% if m.is_archived %}Restore{% else %}Archive{% endif %}</button>
+                        </form>
+                        <form method="post" action="{% url 'dashboard:user-delete' m.id %}" style="display:inline;" onsubmit="return confirm('Permanently delete {{ m.user.username }}? This cannot be undone.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
                         {% endif %}
                     </td>

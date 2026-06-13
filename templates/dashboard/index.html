@@ -48,6 +48,16 @@
             <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">active</div>
         </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(155,89,182,0.15);color:#9b59b6;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">Active Offers</div>
+            <div class="stat-value">{{ stat_coupons|add:stat_promotions }}</div>
+            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_coupons }} coupon{{ stat_coupons|pluralize }} · {{ stat_promotions }} promo{{ stat_promotions|pluralize }}</div>
+        </div>
+    </div>
 </div>
 
 <div class="card animate-in" style="animation-delay:0.2s;margin-top:24px;">

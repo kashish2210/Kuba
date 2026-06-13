@@ -26,6 +26,12 @@ def cafe_admin_required(view_func=None, *, require_admin=True):
                     raise PermissionDenied("You don't have access to this cafe.")
                 if require_admin and profile.role != profile.Role.ADMIN:
                     raise PermissionDenied("Cafe admin access required.")
+                # Kitchen-only users are sent to the KDS panel
+                if profile.role == "kitchen" and require_admin is False:
+                    from django.urls import reverse
+                    kds_url = "/pos/kds/"
+                    if request.path not in (kds_url,):
+                        return redirect(kds_url)
             return fn(request, *args, **kwargs)
 
         return wrapper
@@ -33,3 +39,20 @@ def cafe_admin_required(view_func=None, *, require_admin=True):
     if view_func is not None:
         return decorator(view_func)
     return decorator
+
+
+def cafe_kds_required(fn):
+    """Allow admin, cashier, AND kitchen roles. Block everyone else."""
+    @wraps(fn)
+    def wrapper(request, *args, **kwargs):
+        if getattr(request, "is_admin_host", False):
+            return redirect("/admin/")
+        cafe = getattr(request, "cafe", None)
+        if cafe is None or not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not request.user.is_superuser:
+            profile = getattr(request.user, "profile", None)
+            if profile is None or profile.cafe_id != cafe.id:
+                raise PermissionDenied("You don't have access to this cafe.")
+        return fn(request, *args, **kwargs)
+    return wrapper

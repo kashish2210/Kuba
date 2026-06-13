@@ -32,6 +32,7 @@ urlpatterns = [
     path("team/", views.users, name="users"),
     path("team/<int:pk>/archive/", views.user_archive, name="user-archive"),
     path("team/<int:pk>/password/", views.user_password, name="user-password"),
+    path("team/<int:pk>/delete/", views.user_delete, name="user-delete"),
 
     # Coupons & Promotions
     path("coupons/", views.coupons, name="coupons"),

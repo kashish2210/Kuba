@@ -81,6 +81,8 @@ def cafe_dashboard(request):
         "stat_floors": Floor.objects.filter(cafe=cafe).count(),
         "stat_tables": CafeTable.objects.filter(cafe=cafe).count(),
         "stat_team": Profile.objects.filter(cafe=cafe, is_archived=False).count(),
+        "stat_coupons": Coupon.objects.filter(cafe=cafe, is_active=True).count(),
+        "stat_promotions": Promotion.objects.filter(cafe=cafe, is_active=True).count(),
         "recent_audit": AuditLog.objects.filter(cafe=cafe)[:8],
     }
     return render(request, "dashboard/index.html", context)
@@ -738,6 +740,21 @@ def user_password(request, pk):
     return redirect("dashboard:users")
 
 
+@cafe_admin_required
+@require_POST
+def user_delete(request, pk):
+    profile = get_object_or_404(Profile, pk=pk, cafe=request.cafe)
+    if profile.user_id == request.user.id:
+        messages.error(request, "You cannot delete your own account.")
+        return redirect("dashboard:users")
+    username = profile.user.username
+    profile.user.delete()
+    log_action("delete", cafe=request.cafe, request=request, target=None,
+               message=f"Deleted team member '{username}'.")
+    messages.success(request, f"'{username}' has been deleted.")
+    return redirect("dashboard:users")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Customize cafe
 # ─────────────────────────────────────────────────────────────────────────────
@@ -873,7 +890,7 @@ def receipt_test(request):
 # ─────────────────────────────────────────────────────────────────────────────
 @cafe_admin_required(require_admin=False)
 def kds_display(request):
-    return render(request, "dashboard/kds.html")
+    return redirect("pos:kds")
 
 
 @cafe_admin_required(require_admin=False)

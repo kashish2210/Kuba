@@ -6,6 +6,7 @@ app_name = "pos"
 
 urlpatterns = [
     path("", views.terminal, name="terminal"),
+    path("kds/", views.kds_display, name="kds"),
     path("session/open/", views.session_open, name="session-open"),
     path("session/close/", views.session_close, name="session-close"),
     path("tables/", views.tables, name="tables"),

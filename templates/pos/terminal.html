@@ -240,6 +240,7 @@ window.POS = {
             discount_value: {{ p.discount_value }},
             min_order_amount: {% if p.min_order_amount %}{{ p.min_order_amount }}{% else %}null{% endif %},
             min_quantity: {% if p.min_quantity %}{{ p.min_quantity }}{% else %}null{% endif %},
+            product_id: {% if p.product_id %}{{ p.product_id }}{% else %}null{% endif %},
             product_name: "{% if p.product %}{{ p.product.name|escapejs }}{% endif %}"
         },
         {% endfor %}

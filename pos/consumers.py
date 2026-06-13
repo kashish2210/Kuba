@@ -10,7 +10,10 @@ class KDSConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.cafe = await self._resolve_cafe()
         user = self.scope.get("user")
-        if self.cafe is None or user is None or not user.is_authenticated:
+        if self.cafe is None:
+            await self.close(code=4403)
+            return
+        if user is None or not user.is_authenticated:
             await self.close(code=4401)
             return
 

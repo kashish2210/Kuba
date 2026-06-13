@@ -23,7 +23,7 @@ from cafe_pos.models import (
     Coupon,
     Promotion,
 )
-from dashboard.mixins import cafe_admin_required
+from dashboard.mixins import cafe_admin_required, cafe_kds_required
 from tenants.utils import log_action
 
 from . import services
@@ -66,6 +66,11 @@ def _editable_or_400(order):
 @cafe_admin_required(require_admin=False)
 @ensure_csrf_cookie
 def terminal(request):
+    # Kitchen-display-only users go straight to KDS, not POS
+    profile = getattr(request.user, "profile", None)
+    if profile and profile.role == "kitchen":
+        return redirect("pos:kds")
+
     cafe = request.cafe
     services.ensure_payment_methods(cafe)
     session = services.current_session(cafe)
@@ -87,6 +92,19 @@ def terminal(request):
         "promotions": Promotion.objects.filter(cafe=cafe, is_active=True).select_related("product"),
     }
     return render(request, "pos/terminal.html", context)
+
+
+@cafe_kds_required
+@ensure_csrf_cookie
+def kds_display(request):
+    """Standalone Kitchen Display panel — no admin sidebar."""
+    cafe = request.cafe
+    profile = getattr(request.user, "profile", None)
+    is_admin = request.user.is_superuser or (profile and profile.role == "admin")
+    return render(request, "pos/kds.html", {
+        "is_admin": is_admin,
+        "categories": list(cafe.product_categories.values("id", "name", "color")),
+    })
 
 
 @cafe_admin_required(require_admin=False)
