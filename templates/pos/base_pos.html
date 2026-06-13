@@ -1,0 +1,72 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}POS — {{ cafe.name }}{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/pos.css' %}" />
+</head>
+<body>
+<div class="pos-app">
+    <!-- Top bar -->
+    <header class="pos-topbar">
+        <div class="pos-logo">
+            {% if cafe.logo_svg %}<span class="pos-logo-svg">{{ cafe.logo_svg|safe }}</span>{% endif %}
+            <span class="pos-logo-text">{{ cafe.name }}</span>
+        </div>
+
+        <div class="pos-search">
+            <input type="search" id="product-search" placeholder="Search products…" autocomplete="off" />
+        </div>
+
+        <div class="pos-topbar-right">
+            {% if session %}
+            <span class="pos-session-badge" title="POS session opened {{ session.opened_at|date:'d M, H:i' }}">
+                <span class="dot"></span> Session #{{ session.id }} · {{ session.opened_at|time:"H:i" }}
+            </span>
+            {% endif %}
+            <button class="pos-pill" id="orders-btn" title="Orders this session">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                Orders
+            </button>
+            <button class="pos-pill" id="table-indicator" title="Choose table">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l1-7h16l1 7"/><path d="M4 11h16v2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span id="table-label">No table</span>
+                <span>▾</span>
+            </button>
+            <div class="pos-user" title="{{ request.user.username }} · {% if is_admin %}Admin{% else %}Cashier{% endif %}">{{ request.user.username|first|upper }}</div>
+            <div class="pos-menu-wrap">
+                <button class="pos-icon-btn" id="pos-hamburger" aria-label="Menu">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="pos-menu" id="pos-menu" hidden>
+                    {% if is_admin %}
+                        <a href="{% url 'dashboard:products' %}">Products</a>
+                        <a href="{% url 'dashboard:categories' %}">Category</a>
+                        <a href="{% url 'dashboard:payment-methods' %}">Payment method</a>
+                        <a href="{% url 'dashboard:coupons' %}">Coupon &amp; Promotion</a>
+                        <a href="{% url 'dashboard:users' %}">User/Employee</a>
+                        <a href="{% url 'dashboard:kds' %}">KDS</a>
+                        <a href="{% url 'dashboard:reports' %}">Reports</a>
+                        <a href="{% url 'dashboard:index' %}">Admin dashboard</a>
+                        <div class="pos-menu-sep"></div>
+                    {% endif %}
+                    <form method="post" action="{% url 'pos:session-close' %}" style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="pos-menu-link-btn">Close session</button>
+                    </form>
+                    <a href="{% url 'account_logout' %}" class="danger">Log-Out</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="{% static 'js/pos.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

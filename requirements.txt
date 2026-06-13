@@ -2,3 +2,4 @@ django
 pillow
 django-allauth
 django-jazzmin
+qrcode

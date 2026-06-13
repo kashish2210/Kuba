@@ -1,0 +1,144 @@
+{% extends "pos/base_pos.html" %}
+
+{% block content %}
+<div class="pos-grid">
+
+    <!-- ───────── Product panel ───────── -->
+    <section class="pos-panel pos-products">
+        <div class="cat-tabs" id="cat-tabs">
+            <button class="cat-tab active" data-cat="all" style="--cat:#6b7280;">All</button>
+            {% for c in categories %}
+                <button class="cat-tab" data-cat="{{ c.id }}" style="--cat:{{ c.color }};">{{ c.name }}</button>
+            {% endfor %}
+        </div>
+
+        <div class="product-grid" id="product-grid">
+            {% for p in products %}
+                <button class="product-card" data-id="{{ p.id }}" data-cat="{{ p.category_id }}"
+                        data-name="{{ p.name|lower }}" style="--cat:{{ p.category.color }};">
+                    <span class="pc-dot {% if p.is_active %}on{% else %}off{% endif %}"></span>
+                    <span class="pc-name">{{ p.name }}</span>
+                    <span class="pc-price">₹{{ p.price }}</span>
+                </button>
+            {% empty %}
+                <p class="pos-empty">No products yet. Add some in the admin dashboard.</p>
+            {% endfor %}
+        </div>
+        <div class="pos-panel-label">Product</div>
+    </section>
+
+    <!-- ───────── Cart panel ───────── -->
+    <section class="pos-panel pos-cart">
+        <div class="cart-head">
+            <span id="cart-order-no">No order</span>
+        </div>
+        <div class="cart-lines" id="cart-lines">
+            <div class="cart-placeholder">Pick a table, then tap products to add them.</div>
+        </div>
+
+        <button class="cart-kitchen" id="btn-send-kitchen">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Send to Kitchen
+        </button>
+
+        <div class="cart-actions">
+            <button id="btn-customer">👤 Customer</button>
+            <button id="btn-discount">％ Discount</button>
+        </div>
+
+        <div class="cart-summary">
+            <div class="cs-row"><span>Sub total</span><span id="sum-subtotal">₹0.00</span></div>
+            <div class="cs-row"><span>Tax (GST)</span><span id="sum-tax">₹0.00</span></div>
+            <div class="cs-row" id="cs-discount-row" hidden><span>Discount</span><span id="sum-discount">₹0.00</span></div>
+            <div class="cs-row cs-total"><span>Total</span><span id="sum-total">₹0.00</span></div>
+        </div>
+        <div class="pos-panel-label">Cart</div>
+    </section>
+
+    <!-- ───────── Payment panel ───────── -->
+    <section class="pos-panel pos-payment">
+        <div class="pay-methods" id="pay-methods">
+            {% for m in payment_methods %}
+                <button class="pay-method" data-method="{{ m.type }}">
+                    <span class="pm-label">{{ m.get_type_display }}</span>
+                </button>
+            {% empty %}
+                <p class="pos-empty">No payment methods enabled.</p>
+            {% endfor %}
+        </div>
+
+        <div class="pay-amount">
+            <div class="pay-amount-label">Amount</div>
+            <div class="pay-amount-value" id="pay-amount">₹0.00</div>
+            <div class="pay-amount-method" id="pay-method-label"></div>
+        </div>
+
+        <!-- contextual detail: cash tendered / change, upi qr, card ref -->
+        <div class="pay-detail" id="pay-detail"></div>
+
+        <div class="keypad" id="keypad">
+            <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button>
+            <button class="kp-act" data-act="prices">Prices</button>
+            <button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button>
+            <button class="kp-act" data-act="disc">Disc.</button>
+            <button data-key="9">9</button><button data-key="0">0</button><button data-key="." >.</button><button class="kp-clear" data-act="clear">⌫</button>
+            <button class="kp-act" data-act="qty">Qty</button>
+        </div>
+
+        <button class="pay-confirm" id="btn-pay">Pay</button>
+        <div class="pos-panel-label">Payment</div>
+    </section>
+</div>
+
+<!-- Floor / table popup -->
+<div class="pos-modal" id="floor-modal" hidden>
+    <div class="pos-modal-card">
+        <div class="pos-modal-head">
+            <h3>Choose a table</h3>
+            <button class="pos-modal-close" id="floor-close">✕</button>
+        </div>
+        <div class="floor-tabs" id="floor-tabs"></div>
+        <div class="floor-grid" id="floor-grid"></div>
+    </div>
+</div>
+
+<!-- Generic prompt modal (customer / discount) -->
+<div class="pos-modal" id="prompt-modal" hidden>
+    <div class="pos-modal-card pos-modal-sm">
+        <div class="pos-modal-head"><h3 id="prompt-title">…</h3><button class="pos-modal-close" id="prompt-close">✕</button></div>
+        <div id="prompt-body"></div>
+    </div>
+</div>
+
+<!-- Orders (current session) modal -->
+<div class="pos-modal" id="orders-modal" hidden>
+    <div class="pos-modal-card">
+        <div class="pos-modal-head">
+            <h3>Orders this session</h3>
+            <button class="pos-modal-close" id="orders-close">✕</button>
+        </div>
+        <div id="orders-list"></div>
+        <div id="orders-detail" hidden></div>
+    </div>
+</div>
+
+<!-- Receipt modal -->
+<div class="pos-modal" id="receipt-modal" hidden>
+    <div class="pos-modal-card pos-modal-sm">
+        <div class="pos-modal-head"><h3>Payment complete</h3></div>
+        <div id="receipt-body"></div>
+        <button class="pay-confirm" id="btn-new-order">New order</button>
+    </div>
+</div>
+
+<script>
+window.POS = {
+    urls: {
+        tables: "{% url 'pos:tables' %}",
+        orders: "{% url 'pos:orders' %}",
+        orderStart: "{% url 'pos:order-start' %}",
+        orderRoot: "/pos/order/",
+    }
+};
+</script>
+{% endblock %}

@@ -43,6 +43,11 @@ def home(request):
             if cafe is not None:
                 return redirect(cafe.dashboard_url(request))
         return render(request, "landing.html")
+    # Cashiers go straight to the POS terminal; admins/superusers get the admin panel.
+    if request.user.is_authenticated and not request.user.is_superuser:
+        profile = getattr(request.user, "profile", None)
+        if profile is not None and profile.cafe_id == request.cafe.id and profile.role == "cashier":
+            return redirect("pos:terminal")
     return cafe_dashboard(request)
 
 

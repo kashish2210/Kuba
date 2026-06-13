@@ -1,0 +1,48 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>POS Session — {{ cafe.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/pos.css' %}" />
+</head>
+<body>
+<div class="session-screen">
+    <div class="session-card">
+        <div class="session-logo">
+            {% if cafe.logo_svg %}{{ cafe.logo_svg|safe }}{% endif %}
+        </div>
+        <h1>{{ cafe.name }}</h1>
+
+        {% if mode == "closed" %}
+            <p class="session-sub">Session closed.</p>
+            {% if summary %}
+            <div class="session-stats">
+                <div><span class="ss-num">{{ summary.orders }}</span><span class="ss-lbl">orders</span></div>
+                <div><span class="ss-num">₹{{ summary.revenue }}</span><span class="ss-lbl">revenue</span></div>
+            </div>
+            {% endif %}
+        {% else %}
+            <p class="session-sub">Welcome. Open a session to start taking orders.</p>
+            {% if last_session %}
+            <div class="session-last">
+                Last session: {{ last_session.opened_at|date:"d M Y, H:i" }}
+                {% if last_session.closing_sale_amount %}· closed at ₹{{ last_session.closing_sale_amount }}{% endif %}
+            </div>
+            {% endif %}
+        {% endif %}
+
+        <form method="post" action="{% url 'pos:session-open' %}">
+            {% csrf_token %}
+            <button type="submit" class="session-btn">
+                {% if mode == "closed" %}Open new session{% else %}Open Session{% endif %}
+            </button>
+        </form>
+
+        <a class="session-logout" href="{% url 'account_logout' %}">Log out</a>
+    </div>
+</div>
+</body>
+</html>

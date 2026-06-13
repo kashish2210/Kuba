@@ -37,14 +37,14 @@
             Dashboard
         </a>
 
-        <a href="{% url 'dashboard:pos-session' %}" class="sidebar-link {% if request.resolver_match.url_name == 'pos-session' %}active{% endif %}" id="nav-pos">
+        <a href="{% url 'pos:terminal' %}" class="sidebar-link" id="nav-pos" target="_blank">
             <svg viewBox="0 0 24 24">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                 <line x1="8" y1="21" x2="16" y2="21"/>
                 <line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
             POS Terminal
-            <span class="sidebar-badge">Soon</span>
+            <span class="sidebar-badge">Live</span>
         </a>
 
         <div class="sidebar-section-label">Catalog</div>

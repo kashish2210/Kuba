@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'tenants',
     'dashboard',
     'cafe_pos',
+    'pos',
 ]
 
 MIDDLEWARE = [
