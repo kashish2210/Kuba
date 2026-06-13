@@ -1,0 +1,237 @@
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
+
+
+class Profile(models.Model):
+    class Role(models.TextChoices):
+        ADMIN = "admin", "Admin"
+        CASHIER = "cashier", "Cashier"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.CASHIER)
+    is_archived = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} ({self.role})"
+
+
+class ProductCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    color = models.CharField(max_length=7)
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=200)
+    category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, related_name="products")
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    unit_of_measure = models.CharField(max_length=50)
+    tax_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    description = models.TextField(null=True, blank=True)
+    show_in_kds = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Floor(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class CafeTable(models.Model):
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name="tables")
+    table_number = models.CharField(max_length=20)
+    seats = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["floor", "table_number"], name="uniq_table_per_floor"),
+        ]
+
+    def __str__(self):
+        return f"{self.floor.name} - {self.table_number}"
+
+
+class PaymentMethod(models.Model):
+    class MethodType(models.TextChoices):
+        CASH = "cash", "Cash"
+        CARD = "card", "Card"
+        UPI = "upi", "UPI"
+
+    type = models.CharField(max_length=10, choices=MethodType.choices, unique=True)
+    is_enabled = models.BooleanField(default=False)
+    upi_id = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return self.get_type_display()
+
+
+class Coupon(models.Model):
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = "percentage", "Percentage"
+        FIXED = "fixed", "Fixed"
+
+    code = models.CharField(max_length=50, unique=True)
+    discount_type = models.CharField(max_length=20, choices=DiscountType.choices)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        self.code = self.code.upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.code
+
+
+class Promotion(models.Model):
+    class ApplyTo(models.TextChoices):
+        PRODUCT = "product", "Product"
+        ORDER = "order", "Order"
+
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = "percentage", "Percentage"
+        FIXED = "fixed", "Fixed"
+
+    name = models.CharField(max_length=150)
+    apply_to = models.CharField(max_length=20, choices=ApplyTo.choices)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="promotions",
+        null=True,
+        blank=True,
+    )
+    min_quantity = models.PositiveIntegerField(null=True, blank=True)
+    min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    discount_type = models.CharField(max_length=20, choices=DiscountType.choices)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(apply_to="product", product__isnull=False, min_quantity__isnull=False)
+                    | Q(apply_to="order", min_order_amount__isnull=False)
+                ),
+                name="promotion_apply_to_required_fields",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Customer(models.Model):
+    name = models.CharField(max_length=150)
+    email = models.EmailField(max_length=255, unique=True, null=True, blank=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class POSSession(models.Model):
+    class SessionStatus(models.TextChoices):
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Closed"
+
+    opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="opened_sessions")
+    opened_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    closing_sale_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=SessionStatus.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["status"],
+                condition=Q(status="open"),
+                name="unique_open_session",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Session {self.id} ({self.status})"
+
+
+class Order(models.Model):
+    class OrderStatus(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENT_TO_KITCHEN = "sent_to_kitchen", "Sent to Kitchen"
+        PAID = "paid", "Paid"
+        CANCELLED = "cancelled", "Cancelled"
+
+    order_number = models.CharField(max_length=30, unique=True)
+    session = models.ForeignKey(POSSession, on_delete=models.PROTECT, related_name="orders")
+    table = models.ForeignKey(CafeTable, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
+    status = models.CharField(max_length=20, choices=OrderStatus.choices)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    promotion = models.ForeignKey(Promotion, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.order_number
+
+
+class OrderLineItem(models.Model):
+    class KDSStatus(models.TextChoices):
+        TO_COOK = "to_cook", "To Cook"
+        PREPARING = "preparing", "Preparing"
+        COMPLETED = "completed", "Completed"
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="line_items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="order_lines")
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    line_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    line_total = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    kds_status = models.CharField(max_length=20, choices=KDSStatus.choices, default=KDSStatus.TO_COOK)
+
+    def __str__(self):
+        return f"{self.order.order_number} - {self.product.name}"
+
+
+class PaymentRecord(models.Model):
+    class MethodType(models.TextChoices):
+        CASH = "cash", "Cash"
+        CARD = "card", "Card"
+        UPI = "upi", "UPI"
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment_record")
+    method_type = models.CharField(max_length=10, choices=MethodType.choices)
+    amount_tendered = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    change_due = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    transaction_ref = models.CharField(max_length=100, null=True, blank=True)
+    paid_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Payment for {self.order.order_number}"
