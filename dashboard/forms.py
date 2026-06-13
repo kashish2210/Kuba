@@ -2,7 +2,17 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-from cafe_pos.models import CafeTable, Floor, Product, ProductCategory, Profile
+from cafe_pos.models import (
+    CafeTable,
+    Coupon,
+    Floor,
+    PaymentMethod,
+    PaymentSettings,
+    Product,
+    ProductCategory,
+    Profile,
+    ReceiptSettings,
+)
 from tenants.models import Cafe
 
 
@@ -51,8 +61,8 @@ class ProductForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            "name", "category", "image", "price", "unit_of_measure",
-            "tax_percentage", "description", "show_in_kds", "is_active",
+            "name", "category", "price", "unit_of_measure",
+            "tax_percentage", "description", "image", "show_in_kds", "is_active",
         ]
         widgets = {"description": forms.Textarea(attrs={"rows": 3})}
 
@@ -60,6 +70,26 @@ class ProductForm(StyledFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if cafe is not None:
             self.fields["category"].queryset = ProductCategory.objects.filter(cafe=cafe)
+
+
+class CouponForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Coupon
+        fields = ["code", "discount_type", "discount_value", "is_active"]
+
+    def __init__(self, *args, cafe=None, **kwargs):
+        self._cafe = cafe
+        super().__init__(*args, **kwargs)
+
+    def clean_code(self):
+        code = self.cleaned_data["code"].strip().upper()
+        if self._cafe is not None:
+            qs = Coupon.objects.filter(cafe=self._cafe, code=code)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("A coupon with that code already exists.")
+        return code
 
 
 class EmployeeForm(StyledFormMixin, forms.Form):
@@ -98,7 +128,68 @@ class SetPasswordForm(StyledFormMixin, forms.Form):
 class CafeCustomizeForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Cafe
-        fields = ["name", "logo_svg", "logo_image"]
+        fields = [
+            "name", "logo_svg", "logo_image",
+            "theme_primary_color", "theme_primary_hover_color", "theme_accent_color",
+            "theme_sidebar_color", "theme_surface_color", "theme_surface_alt_color",
+            "theme_text_color", "theme_radius_px", "custom_css",
+        ]
         widgets = {
             "logo_svg": forms.Textarea(attrs={"rows": 8, "style": "font-family:monospace"}),
+            "theme_primary_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_primary_hover_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_accent_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_sidebar_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_surface_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_surface_alt_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_text_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_radius_px": forms.NumberInput(attrs={"min": 4, "max": 28, "step": 1}),
+            "custom_css": forms.Textarea(attrs={
+                "rows": 12,
+                "spellcheck": "false",
+                "style": "font-family:ui-monospace,SFMono-Regular,Consolas,monospace",
+                "placeholder": ".btn-primary {\n    text-transform: uppercase;\n}",
+            }),
+        }
+        labels = {
+            "theme_primary_color": "Primary color",
+            "theme_primary_hover_color": "Primary hover color",
+            "theme_accent_color": "Accent color",
+            "theme_sidebar_color": "Sidebar color",
+            "theme_surface_color": "Page background",
+            "theme_surface_alt_color": "Alternate surface",
+            "theme_text_color": "Text color",
+            "theme_radius_px": "Corner radius",
+            "custom_css": "CSS override editor",
+        }
+
+
+class PaymentSettingsForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = PaymentSettings
+        fields = [
+            "upi_id", "upi_payee_name",
+            "razorpay_enabled", "razorpay_key_id", "razorpay_key_secret",
+            "stripe_enabled", "stripe_publishable_key", "stripe_secret_key",
+        ]
+        widgets = {
+            "razorpay_key_secret": forms.PasswordInput(render_value=True),
+            "stripe_secret_key": forms.PasswordInput(render_value=True),
+        }
+
+
+class ReceiptSettingsForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = ReceiptSettings
+        fields = [
+            "use_default", "template_html",
+            "smtp_use_default", "smtp_host", "smtp_port", "smtp_user",
+            "smtp_password", "smtp_use_tls", "from_email",
+        ]
+        widgets = {
+            "template_html": forms.Textarea(attrs={
+                "rows": 18, "id": "receipt-html",
+                "style": "font-family:ui-monospace,Consolas,monospace;",
+            }),
+            "smtp_password": forms.PasswordInput(render_value=True),
         }

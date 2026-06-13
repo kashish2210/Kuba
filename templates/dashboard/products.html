@@ -32,7 +32,16 @@
         <tbody>
         {% for p in products %}
             <tr>
-                <td><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        {% if p.image %}
+                            <img src="{{ p.image.url }}" alt="{{ p.name }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                        {% else %}
+                            <span style="width:40px;height:40px;border-radius:8px;background:var(--surface-alt,#eee);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🍽️</span>
+                        {% endif %}
+                        <span><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></span>
+                    </div>
+                </td>
                 <td>
                     <span class="badge" style="background:{{ p.category.color }}22;color:{{ p.category.color }};border:1px solid {{ p.category.color }};">{{ p.category.name }}</span>
                 </td>

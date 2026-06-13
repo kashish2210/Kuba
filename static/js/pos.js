@@ -280,15 +280,31 @@
       api(orderUrl("pay/"), "POST", body).then(showReceipt).catch(showErr);
     });
 
+    var paidOrderId = null;
+    var paidCustomerEmail = "";
     function showReceipt(d) {
+      paidOrderId = order ? order.id : null;
+      paidCustomerEmail = d.customer_email || "";
       $("receipt-body").innerHTML =
         "<div>Order <strong>" + d.order_number + "</strong></div>" +
         "<div>Method: " + d.method.toUpperCase() + "</div>" +
         "<div>Tendered: " + money(d.amount_tendered) + "</div>" +
         (d.change_due ? "<div>Change due: " + money(d.change_due) + "</div>" : "") +
-        '<div class="r-total">Paid ' + money(d.total) + "</div>";
+        '<div class="r-total">Paid ' + money(d.total) + "</div>" +
+        (d.receipt_emailed ? '<div style="color:#34b27b;font-size:.85rem;margin-top:6px;">✓ Receipt emailed to ' + paidCustomerEmail + "</div>" : "");
       $("receipt-modal").hidden = false;
     }
+
+    $("btn-email-receipt").addEventListener("click", function () {
+      if (!paidOrderId) return;
+      promptModal("Email receipt", [{ name: "email", label: "Send to", type: "email" }], function (vals) {
+        var to = (vals.email || paidCustomerEmail || "").trim();
+        if (!to) { toast("Enter an email address"); return; }
+        api(U.orderRoot + paidOrderId + "/email-receipt/", "POST", { email: to })
+          .then(function () { toast("Receipt sent to " + to); })
+          .catch(showErr);
+      });
+    });
 
     $("btn-new-order").addEventListener("click", function () {
       $("receipt-modal").hidden = true;

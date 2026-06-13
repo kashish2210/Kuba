@@ -12,10 +12,10 @@
 <div class="pos-app">
     <!-- Top bar -->
     <header class="pos-topbar">
-        <a href="{% url 'pos:terminal' %}" class="pos-logo">
-            {% if cafe.logo_svg %}<span class="pos-logo-svg">{{ cafe.logo_svg|safe }}</span>{% endif %}
+        <div class="pos-logo">
+            <span class="pos-logo-svg">{% include "partials/cafe_logo.html" %}</span>
             <span class="pos-logo-text">{{ cafe.name }}</span>
-        </a>
+        </div>
 
         <div class="pos-search">
             <input type="search" id="product-search" placeholder="Search products…" autocomplete="off" />

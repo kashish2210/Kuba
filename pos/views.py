@@ -334,6 +334,13 @@ def order_pay(request, pk):
 
     log_action("other", cafe=request.cafe, request=request, target=order,
                message=f"Payment for {order.order_number}: {method} ₹{total}.")
+
+    # Auto-email the receipt to the customer if we have their address (best-effort).
+    receipt_emailed = False
+    if order.customer_id and order.customer.email:
+        from cafe_pos.receipts import email_receipt
+        receipt_emailed = email_receipt(order, order.customer.email)
+
     return JsonResponse({
         "ok": True,
         "order_number": order.order_number,
@@ -341,7 +348,26 @@ def order_pay(request, pk):
         "total": float(total),
         "amount_tendered": float(tendered),
         "change_due": float(change if change > 0 else 0),
+        "customer_email": (order.customer.email if order.customer_id else "") or "",
+        "receipt_emailed": receipt_emailed,
     })
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def order_email_receipt(request, pk):
+    """Manually email the receipt for an order (POS 'Email receipt' action)."""
+    from cafe_pos.receipts import email_receipt
+
+    order = _get_order(request, pk)
+    to = (_data(request).get("email") or "").strip()
+    if not to and order.customer_id:
+        to = order.customer.email or ""
+    if not to:
+        return JsonResponse({"error": "No email address to send to."}, status=400)
+    if email_receipt(order, to):
+        return JsonResponse({"ok": True, "sent_to": to})
+    return JsonResponse({"error": "Could not send the receipt (check SMTP settings)."}, status=500)
 
 
 @cafe_admin_required(require_admin=False)
@@ -351,10 +377,16 @@ def order_upi_qr(request, pk):
 
     import qrcode
 
+    from cafe_pos.models import PaymentSettings
+
     order = _get_order(request, pk)
-    upi = PaymentMethod.objects.filter(cafe=request.cafe, type="upi").first()
-    upi_id = (upi.upi_id if upi else "") or "cafe@upi"
-    payload = services.upi_qr_payload(upi_id, order.total, name=request.cafe.name)
+    ps = PaymentSettings.objects.filter(cafe=request.cafe).first()
+    upi_id = (ps.upi_id if ps and ps.upi_id else "")
+    if not upi_id:
+        upi = PaymentMethod.objects.filter(cafe=request.cafe, type="upi").first()
+        upi_id = (upi.upi_id if upi else "") or "cafe@upi"
+    payee = (ps.upi_payee_name if ps and ps.upi_payee_name else request.cafe.name)
+    payload = services.upi_qr_payload(upi_id, order.total, name=payee)
     img = qrcode.make(payload)
     buf = io.BytesIO()
     img.save(buf, format="PNG")

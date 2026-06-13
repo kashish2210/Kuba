@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Methods — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Payment Methods{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Payment Methods</h1>
+    <p class="text-muted">Choose what staff can accept at the POS and configure your gateways.</p>
+</div>
+
+<form method="post" class="dash-form" style="max-width:720px;">
+    {% csrf_token %}
+
+    <div class="card" style="margin-bottom:18px;"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">Accepted at the counter</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <label style="display:flex;gap:10px;align-items:center;">
+                <input type="checkbox" name="enable_cash" {% if methods.cash.is_enabled %}checked{% endif %}> <strong>Cash</strong>
+            </label>
+            <label style="display:flex;gap:10px;align-items:center;">
+                <input type="checkbox" name="enable_card" {% if methods.card.is_enabled %}checked{% endif %}> <strong>Card</strong>
+            </label>
+            <label style="display:flex;gap:10px;align-items:center;">
+                <input type="checkbox" name="enable_upi" {% if methods.upi.is_enabled %}checked{% endif %}> <strong>UPI (QR)</strong>
+            </label>
+        </div>
+    </div></div>
+
+    <div class="card" style="margin-bottom:18px;"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">UPI / QR</h3>
+        <div class="form-group">
+            <label class="form-label">UPI ID (VPA)</label>
+            {{ form.upi_id }}
+            <div class="text-xs text-muted" style="margin-top:4px;">Used to generate the QR shown in the POS, e.g. <code>cafe@ybl</code>.</div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Payee name</label>
+            {{ form.upi_payee_name }}
+        </div>
+    </div></div>
+
+    <div class="card" style="margin-bottom:18px;"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">Razorpay</h3>
+        <label style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">{{ form.razorpay_enabled }} Enable Razorpay</label>
+        <div class="form-group"><label class="form-label">Key ID</label>{{ form.razorpay_key_id }}</div>
+        <div class="form-group"><label class="form-label">Key Secret</label>{{ form.razorpay_key_secret }}</div>
+    </div></div>
+
+    <div class="card" style="margin-bottom:18px;"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">Stripe</h3>
+        <label style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">{{ form.stripe_enabled }} Enable Stripe</label>
+        <div class="form-group"><label class="form-label">Publishable key</label>{{ form.stripe_publishable_key }}</div>
+        <div class="form-group"><label class="form-label">Secret key</label>{{ form.stripe_secret_key }}</div>
+        <div class="text-xs text-muted">Keys are stored for the upcoming live-checkout integration.</div>
+    </div></div>
+
+    <button type="submit" class="btn btn-primary">Save payment settings</button>
+</form>
+{% endblock %}

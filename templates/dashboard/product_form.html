@@ -13,6 +13,12 @@
     <div class="card-body">
         <form method="post" enctype="multipart/form-data" class="dash-form">
             {% csrf_token %}
+            {% if product.image %}
+                <div class="form-group">
+                    <label class="form-label">Current image</label>
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width:120px;border-radius:10px;display:block;">
+                </div>
+            {% endif %}
             {% for field in form %}
                 <div class="form-group">
                     <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>

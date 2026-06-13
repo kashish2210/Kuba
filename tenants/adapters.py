@@ -17,30 +17,34 @@ def _landing_path(user):
     return "/"
 
 
-class KubaAccountAdapter(DefaultAccountAdapter):
-    """Route users to the right place after login/signup based on their role.
+def _is_member(user, cafe):
+    if user.is_superuser:
+        return True
+    profile = getattr(user, "profile", None)
+    return profile is not None and profile.cafe_id == cafe.id
 
-    Staff (cashiers) are recognised automatically and sent straight to the POS
-    terminal; cafe admins/owners go to the admin dashboard; the platform
-    superuser on the admin host goes to the Django admin.
+
+class KubaAccountAdapter(DefaultAccountAdapter):
+    """Subdomain-locked auth.
+
+    A user signs in on *their own* cafe's subdomain — login never auto-detects or
+    jumps to a different subdomain. New-cafe signup is only allowed on the root host.
     """
 
-    def _role_redirect(self, request, cafe, user):
-        path = _landing_path(user)
-        # Already on the right cafe host -> a relative path is enough.
-        if getattr(request, "cafe", None) and request.cafe.pk == cafe.pk:
-            return path
-        # Otherwise build an absolute URL on the cafe's own subdomain host.
-        return cafe.dashboard_url(request).rstrip("/") + path
+    def is_open_for_signup(self, request):
+        # Only the public root host offers new-cafe registration; an existing
+        # cafe's subdomain (or the admin host) shows the "signup closed" page.
+        return getattr(request, "cafe", None) is None and not getattr(request, "is_admin_host", False)
 
     def get_login_redirect_url(self, request):
         user = request.user
         if user.is_superuser and getattr(request, "is_admin_host", False):
             return "/admin/"
-        cafe = _user_cafe(user)
+        cafe = getattr(request, "cafe", None)
         if cafe is not None:
-            return self._role_redirect(request, cafe, user)
-        return super().get_login_redirect_url(request)
+            # Member logging in on their own cafe host -> same-host landing.
+            return _landing_path(user)
+        return "/"
 
     def get_signup_redirect_url(self, request):
         from .models import Cafe
@@ -52,6 +56,7 @@ class KubaAccountAdapter(DefaultAccountAdapter):
         if cafe is None:
             cafe = _user_cafe(request.user)
         if cafe is not None:
-            # A fresh signup always creates the cafe's admin/owner -> dashboard.
-            return self._role_redirect(request, cafe, request.user)
+            # A fresh signup created this cafe on the root host -> send the new
+            # owner to their cafe's own subdomain dashboard.
+            return cafe.dashboard_url(request)
         return super().get_signup_redirect_url(request)

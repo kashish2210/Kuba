@@ -52,6 +52,7 @@ button { font-family: inherit; cursor: pointer; }
 .product-card:active { transform: scale(.97); }
 .pc-dot { position: absolute; top: 10px; right: 10px; width: 9px; height: 9px; border-radius: 50%; }
 .pc-dot.on { background: var(--ok); } .pc-dot.off { background: var(--bad); }
+.pc-img { width: 100%; height: 54px; object-fit: cover; border-radius: 8px; margin-bottom: 2px; }
 .pc-name { font-weight: 600; font-size: .9rem; line-height: 1.2; }
 .pc-price { color: var(--primary); font-weight: 700; font-size: .85rem; }
 

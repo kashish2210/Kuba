@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Coupons — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Coupons{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Coupons</h1>
+    <p class="text-muted">Discount codes staff can apply at the POS.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+    <div class="card"><div class="card-body">
+        {% if coupons %}
+        <table class="data-table">
+            <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+            <tbody>
+            {% for c in coupons %}
+                <tr>
+                    <td><strong>{{ c.code }}</strong></td>
+                    <td>{{ c.get_discount_type_display }}</td>
+                    <td>{% if c.discount_type == 'percentage' %}{{ c.discount_value }}%{% else %}₹{{ c.discount_value }}{% endif %}</td>
+                    <td>{% if c.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-neutral">Inactive</span>{% endif %}</td>
+                    <td class="text-right">
+                        <a href="?edit={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:coupon-delete' c.id %}" onsubmit="return confirm('Delete {{ c.code }}?');" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><h3 class="empty-state-title">No coupons yet</h3><p class="empty-state-desc">Create one using the form on the right.</p></div>
+        {% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">{% if edit_instance %}Edit “{{ edit_instance.code }}”{% else %}New coupon{% endif %}</h3>
+        <form method="post" action="{% if edit_instance %}{% url 'dashboard:coupon-update' edit_instance.id %}{% else %}{% url 'dashboard:coupon-create' %}{% endif %}" class="dash-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Code</label>
+                {{ form.code }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Discount type</label>
+                {{ form.discount_type }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Value <span class="text-xs text-muted">(% or ₹ amount)</span></label>
+                {{ form.discount_value }}
+            </div>
+            <label class="form-label" style="display:flex;gap:8px;align-items:center;">
+                {{ form.is_active }} Active
+            </label>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button type="submit" class="btn btn-primary">{% if edit_instance %}Save{% else %}Create{% endif %}</button>
+                {% if edit_instance %}<a href="{% url 'dashboard:coupons' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+            </div>
+        </form>
+    </div></div>
+</div>
+{% endblock %}

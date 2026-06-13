@@ -1,27 +1,35 @@
-import json
-
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.db import transaction
-from django.db.models import Max
-from django.http import JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from cafe_pos.models import CafeTable, Floor, Product, ProductCategory, Profile
+from cafe_pos.models import (
+    CafeTable,
+    Coupon,
+    Floor,
+    PaymentMethod,
+    PaymentSettings,
+    Product,
+    ProductCategory,
+    Profile,
+    ReceiptSettings,
+)
 from tenants.models import AuditLog
 from tenants.utils import log_action
 
 from .forms import (
     CafeCustomizeForm,
     CategoryForm,
+    CouponForm,
     EmployeeForm,
     FloorForm,
+    PaymentSettingsForm,
     ProductForm,
+    ReceiptSettingsForm,
     SetPasswordForm,
     TableForm,
 )
@@ -43,11 +51,8 @@ def home(request):
     if getattr(request, "is_admin_host", False):
         return redirect("/admin/")
     if getattr(request, "cafe", None) is None:
-        # Public / marketing host.
-        if request.user.is_authenticated:
-            cafe = _user_cafe(request.user)
-            if cafe is not None:
-                return redirect(cafe.dashboard_url(request))
+        # Public / marketing host. Login is subdomain-locked, so we never auto-jump
+        # a logged-in user to their cafe from here — they navigate to their own host.
         return render(request, "landing.html")
     # Cashiers go straight to the POS terminal; admins/superusers get the admin panel.
     if request.user.is_authenticated and not request.user.is_superuser:
@@ -77,7 +82,7 @@ def cafe_dashboard(request):
 @cafe_admin_required
 def floors(request):
     cafe = request.cafe
-    floor_list = list(Floor.objects.filter(cafe=cafe).order_by("sort_order", "name"))
+    floor_list = list(Floor.objects.filter(cafe=cafe))
     active_id = request.GET.get("floor")
     active_floor = None
     if active_id:
@@ -87,7 +92,7 @@ def floors(request):
 
     tables = []
     if active_floor is not None:
-        tables = list(CafeTable.objects.filter(cafe=cafe, floor=active_floor).order_by("sort_order", "id"))
+        tables = list(CafeTable.objects.filter(floor=active_floor))
 
     edit_table = None
     edit_table_id = request.GET.get("edit_table")
@@ -157,7 +162,6 @@ def table_create(request):
         if table.floor.cafe_id != request.cafe.id:
             raise PermissionDenied("Invalid floor.")
         table.cafe = request.cafe
-        table.sort_order = _next_table_sort_order(request.cafe, table.floor)
         table.save()
         log_action("create", cafe=request.cafe, request=request, target=table,
                    message=f"Added table '{table.table_number}' on {table.floor.name}.")
@@ -173,14 +177,9 @@ def table_create(request):
 @require_POST
 def table_update(request, pk):
     table = get_object_or_404(CafeTable, pk=pk, cafe=request.cafe)
-    previous_floor_id = table.floor_id
     form = TableForm(request.POST, instance=table, cafe=request.cafe)
     if form.is_valid():
-        table = form.save(commit=False)
-        table.save()
-        if table.floor_id != previous_floor_id:
-            table.sort_order = _next_table_sort_order(request.cafe, table.floor, exclude_table_id=table.pk)
-            table.save(update_fields=["sort_order"])
+        form.save()
         log_action("update", cafe=request.cafe, request=request, target=table,
                    message=f"Updated table '{table.table_number}'.")
         messages.success(request, "Table updated.")
@@ -191,133 +190,11 @@ def table_update(request, pk):
 
 @cafe_admin_required
 @require_POST
-def table_move(request):
-    cafe = request.cafe
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "message": "Invalid payload."}, status=400)
-
-    try:
-        table_id = int(payload.get("table_id"))
-        target_floor_id = int(payload.get("target_floor_id"))
-    except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "message": "table_id and target_floor_id must be valid IDs."}, status=400)
-
-    swap_table_id = payload.get("swap_table_id") or payload.get("before_table_id")
-    try:
-        swap_table_id = int(swap_table_id) if swap_table_id else None
-    except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "message": "swap_table_id must be a valid ID."}, status=400)
-
-    if not table_id or not target_floor_id:
-        return JsonResponse({"ok": False, "message": "table_id and target_floor_id are required."}, status=400)
-
-    table = get_object_or_404(CafeTable, pk=table_id, cafe=cafe)
-    target_floor = get_object_or_404(Floor, pk=target_floor_id, cafe=cafe)
-    swap_table = None
-    if swap_table_id:
-        swap_table = CafeTable.objects.filter(pk=swap_table_id, cafe=cafe, floor=target_floor).first()
-        if swap_table is None:
-            return JsonResponse({"ok": False, "message": "Target table was not found."}, status=404)
-
-    with transaction.atomic():
-        if swap_table is not None:
-            source_floor = table.floor
-            source_sort_order = table.sort_order
-
-            table.floor = swap_table.floor
-            table.sort_order = swap_table.sort_order
-            swap_table.floor = source_floor
-            swap_table.sort_order = source_sort_order
-
-            if table.floor_id == swap_table.floor_id:
-                table.save(update_fields=["sort_order"])
-                swap_table.save(update_fields=["sort_order"])
-                _resequence_floor_tables(cafe, table.floor_id)
-            else:
-                table.save(update_fields=["floor", "sort_order"])
-                swap_table.save(update_fields=["floor", "sort_order"])
-                _resequence_floor_tables(cafe, source_floor.id)
-                _resequence_floor_tables(cafe, target_floor.id)
-
-            return JsonResponse({
-                "ok": True,
-                "floor_id": target_floor.id,
-                "redirect_url": f"{reverse('dashboard:floors')}?floor={target_floor.id}",
-            })
-
-        source_floor_id = table.floor_id
-        source_ids = list(
-            CafeTable.objects.filter(cafe=cafe, floor_id=source_floor_id)
-            .exclude(pk=table.pk)
-            .order_by("sort_order", "id")
-            .values_list("id", flat=True)
-        )
-
-        target_ids = []
-        if target_floor_id == source_floor_id:
-            target_ids = source_ids.copy()
-        else:
-            target_ids = list(
-                CafeTable.objects.filter(cafe=cafe, floor_id=target_floor_id)
-                .order_by("sort_order", "id")
-                .values_list("id", flat=True)
-            )
-
-        target_ids.append(table.id)
-
-        source_id_set = set(source_ids)
-        target_id_set = set(target_ids)
-
-        if source_floor_id == target_floor_id:
-            moved_ids = target_ids
-            tables_by_id = {
-                item.id: item
-                for item in CafeTable.objects.filter(cafe=cafe, id__in=moved_ids)
-            }
-            for sort_order, table_id_value in enumerate(moved_ids):
-                row = tables_by_id[table_id_value]
-                row.sort_order = sort_order
-                row.save(update_fields=["sort_order"])
-        else:
-            source_tables_by_id = {
-                item.id: item
-                for item in CafeTable.objects.filter(cafe=cafe, id__in=source_id_set)
-            }
-            for sort_order, table_id_value in enumerate(source_ids):
-                row = source_tables_by_id[table_id_value]
-                row.sort_order = sort_order
-                row.save(update_fields=["sort_order"])
-
-            target_tables_by_id = {
-                item.id: item
-                for item in CafeTable.objects.filter(cafe=cafe, id__in=target_id_set)
-            }
-            for sort_order, table_id_value in enumerate(target_ids):
-                row = target_tables_by_id[table_id_value]
-                row.sort_order = sort_order
-                if row.id == table.id:
-                    row.floor = target_floor
-                    row.save(update_fields=["floor", "sort_order"])
-                else:
-                    row.save(update_fields=["sort_order"])
-
-    return JsonResponse({
-        "ok": True,
-        "floor_id": target_floor.id,
-        "redirect_url": f"{reverse('dashboard:floors')}?floor={target_floor.id}",
-    })
-
-
-@cafe_admin_required
-@require_POST
 def table_delete(request, pk):
     table = get_object_or_404(CafeTable, pk=pk, cafe=request.cafe)
     floor_id = table.floor_id
     number = table.table_number
     table.delete()
-    _resequence_floor_tables(request.cafe, floor_id)
     log_action("delete", cafe=request.cafe, request=request, target=None,
                message=f"Deleted table '{number}'.")
     messages.success(request, f"Table {number} deleted.")
@@ -327,24 +204,6 @@ def table_delete(request, pk):
 def _floors_url(request):
     from django.urls import reverse
     return reverse("dashboard:floors")
-
-
-def _next_table_sort_order(cafe, floor, exclude_table_id=None):
-    queryset = CafeTable.objects.filter(cafe=cafe, floor=floor)
-    if exclude_table_id is not None:
-        queryset = queryset.exclude(pk=exclude_table_id)
-    return (queryset.aggregate(max_sort=Max("sort_order"))["max_sort"] or -1) + 1
-
-
-def _resequence_floor_tables(cafe, floor_id):
-    tables = list(CafeTable.objects.filter(cafe=cafe, floor_id=floor_id).order_by("sort_order", "id"))
-    changed = False
-    for index, table in enumerate(tables):
-        if table.sort_order != index:
-            table.sort_order = index
-            changed = True
-    if changed:
-        CafeTable.objects.bulk_update(tables, ["sort_order"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -468,6 +327,65 @@ def category_delete(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Coupons
+# ─────────────────────────────────────────────────────────────────────────────
+@cafe_admin_required
+def coupons(request):
+    cafe = request.cafe
+    edit_id = request.GET.get("edit")
+    instance = get_object_or_404(Coupon, pk=edit_id, cafe=cafe) if edit_id else None
+    return render(request, "dashboard/coupons.html", {
+        "coupons": Coupon.objects.filter(cafe=cafe).order_by("code"),
+        "form": CouponForm(instance=instance, cafe=cafe),
+        "edit_instance": instance,
+    })
+
+
+@cafe_admin_required
+@require_POST
+def coupon_create(request):
+    form = CouponForm(request.POST, cafe=request.cafe)
+    if form.is_valid():
+        coupon = form.save(commit=False)
+        coupon.cafe = request.cafe
+        coupon.save()
+        log_action("create", cafe=request.cafe, request=request, target=coupon,
+                   message=f"Created coupon '{coupon.code}'.")
+        messages.success(request, f"Coupon '{coupon.code}' created.")
+    else:
+        messages.error(request, "Could not create coupon: " + "; ".join(
+            f"{k}: {', '.join(v)}" for k, v in form.errors.items()))
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def coupon_update(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk, cafe=request.cafe)
+    form = CouponForm(request.POST, instance=coupon, cafe=request.cafe)
+    if form.is_valid():
+        form.save()
+        log_action("update", cafe=request.cafe, request=request, target=coupon,
+                   message=f"Updated coupon '{coupon.code}'.")
+        messages.success(request, "Coupon updated.")
+    else:
+        messages.error(request, "Could not update coupon.")
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def coupon_delete(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk, cafe=request.cafe)
+    code = coupon.code
+    coupon.delete()
+    log_action("delete", cafe=request.cafe, request=request, target=None,
+               message=f"Deleted coupon '{code}'.")
+    messages.success(request, f"Coupon '{code}' deleted.")
+    return redirect("dashboard:coupons")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Team / employees
 # ─────────────────────────────────────────────────────────────────────────────
 @cafe_admin_required
@@ -556,6 +474,106 @@ def audit_log(request):
     paginator = Paginator(logs, 30)
     page = paginator.get_page(request.GET.get("page"))
     return render(request, "dashboard/audit_log.html", {"page_obj": page})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Payment settings (Razorpay / Stripe / UPI config)
+# ─────────────────────────────────────────────────────────────────────────────
+@cafe_admin_required
+def payment_settings(request):
+    from pos.services import ensure_payment_methods
+
+    cafe = request.cafe
+    ensure_payment_methods(cafe)
+    settings_obj, _ = PaymentSettings.objects.get_or_create(cafe=cafe)
+    if request.method == "POST":
+        form = PaymentSettingsForm(request.POST, instance=settings_obj)
+        if form.is_valid():
+            form.save()
+            for t in ("cash", "card", "upi"):
+                pm = PaymentMethod.objects.filter(cafe=cafe, type=t).first()
+                if pm:
+                    pm.is_enabled = bool(request.POST.get(f"enable_{t}"))
+                    if t == "upi" and form.cleaned_data.get("upi_id"):
+                        pm.upi_id = form.cleaned_data["upi_id"]
+                    pm.save()
+            log_action("update", cafe=cafe, request=request, target=settings_obj,
+                       message="Updated payment settings.")
+            messages.success(request, "Payment settings saved.")
+            return redirect("dashboard:payment-methods")
+    else:
+        form = PaymentSettingsForm(instance=settings_obj)
+    methods = {m.type: m for m in PaymentMethod.objects.filter(cafe=cafe)}
+    return render(request, "dashboard/payment_settings.html", {"form": form, "methods": methods})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Receipts (default + custom HTML with data pills + per-cafe SMTP)
+# ─────────────────────────────────────────────────────────────────────────────
+@cafe_admin_required
+def receipt_settings(request):
+    from cafe_pos.receipts import DATA_PILLS
+
+    cafe = request.cafe
+    rs, _ = ReceiptSettings.objects.get_or_create(cafe=cafe)
+    if request.method == "POST":
+        form = ReceiptSettingsForm(request.POST, instance=rs)
+        if form.is_valid():
+            form.save()
+            log_action("update", cafe=cafe, request=request, target=rs,
+                       message="Updated receipt settings.")
+            messages.success(request, "Receipt settings saved.")
+            return redirect("dashboard:receipts")
+    else:
+        form = ReceiptSettingsForm(instance=rs)
+    return render(request, "dashboard/receipt_settings.html",
+                  {"form": form, "pills": DATA_PILLS, "settings": rs})
+
+
+@cafe_admin_required
+@require_POST
+def receipt_preview(request):
+    """Render the receipt against the latest order, using the POSTed (unsaved) HTML."""
+    from cafe_pos.receipts import order_context
+    from django.template import Context, Template
+    from django.template.loader import render_to_string
+    from django.utils.safestring import mark_safe
+
+    order = Order.objects.filter(cafe=request.cafe).order_by("-created_at").first()
+    if order is None:
+        return HttpResponse("<p style='padding:24px;font-family:sans-serif;color:#888'>"
+                            "No orders yet — take one in the POS to preview a receipt.</p>")
+    html_template = (request.POST.get("template_html") or "").strip()
+    use_default = request.POST.get("use_default") == "on" or not html_template
+    if use_default:
+        return HttpResponse(render_to_string("receipts/default_receipt.html", order_context(order)))
+    ctx = order_context(order)
+    ctx["items_table"] = mark_safe(ctx["items_table"])
+    ctx["logo"] = mark_safe(ctx["logo"])
+    try:
+        html = Template(html_template).render(Context(ctx))
+    except Exception as exc:  # show template errors inline in the preview
+        html = f"<p style='color:#c0392b;padding:24px;font-family:sans-serif'>Template error: {exc}</p>"
+    return HttpResponse(html)
+
+
+@cafe_admin_required
+@require_POST
+def receipt_test(request):
+    from cafe_pos.receipts import email_receipt
+
+    cafe = request.cafe
+    order = Order.objects.filter(cafe=cafe).order_by("-created_at").first()
+    to = (request.POST.get("email") or request.user.email or "").strip()
+    if order is None:
+        messages.error(request, "No orders yet to use as a sample receipt.")
+    elif not to:
+        messages.error(request, "Add an email address to send the test to.")
+    elif email_receipt(order, to):
+        messages.success(request, f"Test receipt sent to {to}.")
+    else:
+        messages.error(request, "Could not send the test — check the SMTP settings.")
+    return redirect("dashboard:receipts")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

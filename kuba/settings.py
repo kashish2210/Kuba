@@ -12,8 +12,10 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -154,8 +156,24 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# ─── Email (console backend for development) ─────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# ─── Email ────────────────────────────────────────────────────────────────
+# Platform default SMTP (from .env). Cafes may override with their own SMTP in
+# their Receipt settings; this is the fallback connection.
+APP_NAME = os.environ.get('APP_NAME', 'kuba')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com').strip()
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
+EMAIL_USE_SSL = EMAIL_PORT == 465
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').strip()
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'{APP_NAME} <{EMAIL_HOST_USER}>')
+EMAIL_TIMEOUT = 15
+# Use real SMTP when credentials are present; otherwise print emails to the console.
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if EMAIL_HOST_USER
+    else 'django.core.mail.backends.console.EmailBackend'
+)
 
 # ─── django-allauth configuration ────────────────────────────────────────
 ACCOUNT_LOGIN_METHODS = {"email"}
@@ -164,7 +182,11 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change to 'mandatory' in production
 ACCOUNT_LOGOUT_ON_GET = True
 
 # Self-service signup creates a cafe; the adapter routes users to their cafe host.
-ACCOUNT_FORMS = {'signup': 'tenants.forms.CafeSignupForm'}
+# Login is subdomain-locked (CafeLoginForm refuses non-members of the current cafe).
+ACCOUNT_FORMS = {
+    'signup': 'tenants.forms.CafeSignupForm',
+    'login': 'tenants.forms.CafeLoginForm',
+}
 ACCOUNT_ADAPTER = 'tenants.adapters.KubaAccountAdapter'
 
 # ─── Jazzmin (admin UI) ───────────────────────────────────────────────────
