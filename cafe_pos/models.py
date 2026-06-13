@@ -400,7 +400,7 @@ class OrderReview(models.Model):
         blank=True,
         related_name="order_reviews_as_kitchen",
     )
-    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    rating = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     customer_name = models.CharField(max_length=150, blank=True)
     customer_email = models.EmailField(max_length=255, blank=True)
@@ -437,12 +437,40 @@ class PaymentSettings(models.Model):
         return f"Payment settings — {self.cafe.name}"
 
 
+class FeedbackQuestion(models.Model):
+    QUESTION_TYPES = (
+        ("rating", "Star Rating (1-5)"),
+        ("text", "Text Input"),
+    )
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="feedback_questions")
+    question_text = models.CharField(max_length=255)
+    type = models.CharField(max_length=20, choices=QUESTION_TYPES)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order"]
+
+    def __str__(self):
+        return f"{self.question_text} ({self.type})"
+
+
+class FeedbackResponse(models.Model):
+    review = models.ForeignKey(OrderReview, on_delete=models.CASCADE, related_name="responses")
+    question = models.ForeignKey(FeedbackQuestion, on_delete=models.CASCADE)
+    rating_value = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    text_value = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Response to {self.question.question_text}"
+
+
 class ReceiptSettings(models.Model):
     """Per-cafe receipt template + SMTP (falls back to the platform default)."""
 
     cafe = models.OneToOneField("tenants.Cafe", on_delete=models.CASCADE, related_name="receipt_settings")
     use_default = models.BooleanField(default=True, help_text="Use the built-in receipt design.")
     template_html = models.TextField(blank=True, help_text="Custom receipt HTML with {{ data pills }}.")
+    feedback_email_html = models.TextField(blank=True, help_text="Custom feedback email HTML.")
 
     smtp_use_default = models.BooleanField(default=True, help_text="Send via the platform's default email.")
     smtp_host = models.CharField(max_length=120, blank=True)

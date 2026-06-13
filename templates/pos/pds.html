@@ -70,8 +70,8 @@ html,body{height:100%;margin:0;font-family:Inter,sans-serif;background:var(--bg,
     function shortNo(o){return String(o.order_number || "").replace(/^ORD-0*/,"#");}
     function setConn(text, live){conn.textContent=text;conn.className="pds-status"+(live?" live":"");}
     function speak(o){
-        var text = "Order " + shortNo(o).replace("#","") + " is ready. Please collect your order or ask your waiter to deliver it.";
-        callout.textContent = text;
+        var text = "Your order is ready. Please collect or ask waiter to deliver order.";
+        callout.textContent = "Order " + shortNo(o).replace("#", "") + " is ready!";
         callout.classList.add("show");
         setTimeout(function(){callout.classList.remove("show");}, 4500);
         if ("speechSynthesis" in window) {

@@ -163,6 +163,20 @@ def tables(request):
         o.table_id: o.id
         for o in Order.objects.filter(cafe=cafe, status__in=EDITABLE_STATUSES, table__isnull=False)
     }
+    
+    # Get last order email and review status per table
+    table_emails = {}
+    table_reviewed = {}
+    for table_id in cafe.tables.values_list('id', flat=True):
+        last_order = Order.objects.filter(cafe=cafe, table_id=table_id).order_by('-created_at').first()
+        if last_order:
+            if hasattr(last_order, 'review') and last_order.review:
+                table_reviewed[table_id] = True
+            elif hasattr(last_order, 'reviews') and last_order.reviews.exists():
+                table_reviewed[table_id] = True
+            if last_order.customer and last_order.customer.email:
+                table_emails[table_id] = last_order.customer.email
+
     data = []
     for floor in floors:
         data.append({
@@ -177,6 +191,8 @@ def tables(request):
                     "order_id": open_orders.get(t.id),
                     "occupied": t.is_occupied or (t.id in open_orders),
                     "locked": t.is_occupied,
+                    "customer_email": table_emails.get(t.id, ""),
+                    "has_reviewed": table_reviewed.get(t.id, False),
                 }
                 for t in floor.tables.all() if t.is_active
             ],
@@ -201,6 +217,15 @@ def table_release(request, pk):
     table.save(update_fields=["is_occupied"])
     log_action("update", cafe=request.cafe, request=request, target=table,
                message=f"Marked table {table.table_number} as empty.")
+               
+    email_customer = request.POST.get("email_customer")
+    if email_customer:
+        # Find the most recent order for this table
+        last_order = Order.objects.filter(cafe=request.cafe, table=table).order_by("-created_at").first()
+        if last_order:
+            from cafe_pos.receipts import email_feedback
+            email_feedback(last_order, email_customer, request=request)
+
     if wants_json:
         return JsonResponse({"ok": True, "table_id": pk})
     from django.contrib import messages
@@ -656,6 +681,28 @@ def order_email_receipt(request, pk):
 
 
 @cafe_admin_required(require_admin=False)
+@require_POST
+def order_email_feedback(request, pk):
+    order = get_object_or_404(Order, pk=pk, cafe=request.cafe)
+    if order.status != Order.OrderStatus.PAID:
+        return JsonResponse({"error": "Cannot send feedback request for unpaid order."}, status=400)
+    import json
+    try:
+        data = json.loads(request.body)
+        email = data.get("email")
+    except Exception:
+        email = request.POST.get("email")
+        
+    if not email:
+        return JsonResponse({"error": "Email address required"}, status=400)
+        
+    from cafe_pos.receipts import email_feedback
+    if email_feedback(order, email.strip(), request=request):
+        return JsonResponse({"ok": True})
+    return JsonResponse({"error": "Failed to send feedback email"}, status=500)
+
+
+@cafe_admin_required(require_admin=False)
 def order_upi_qr(request, pk):
     """PNG QR for the order's UPI payment (built from the cafe's UPI id + total)."""
     import io
@@ -785,7 +832,9 @@ def order_review(request, token):
         review_token=token,
     )
     existing = getattr(order, "review", None)
-    return render(request, "pos/review.html", {"order": order, "existing_review": existing})
+    from cafe_pos.models import FeedbackQuestion
+    questions = FeedbackQuestion.objects.filter(cafe=order.cafe).order_by("sort_order")
+    return render(request, "pos/review.html", {"order": order, "existing_review": existing, "questions": questions})
 
 
 @require_POST
@@ -795,13 +844,17 @@ def order_review_submit(request, token):
         review_token=token,
     )
     try:
-        rating = int(request.POST.get("rating"))
+        rating_str = request.POST.get("rating")
+        rating = int(rating_str) if rating_str else None
     except (TypeError, ValueError):
-        rating = 0
-    if rating < 1 or rating > 5:
+        rating = None
+    if rating is not None and (rating < 1 or rating > 5):
+        from cafe_pos.models import FeedbackQuestion
+        questions = FeedbackQuestion.objects.filter(cafe=order.cafe).order_by("sort_order")
         return render(request, "pos/review.html", {
             "order": order,
             "error": "Please select a rating from 1 to 5.",
+            "questions": questions,
         }, status=400)
 
     review, created = OrderReview.objects.get_or_create(
@@ -820,6 +873,23 @@ def order_review_submit(request, token):
     review.rating = rating
     review.comment = (request.POST.get("comment") or "").strip()
     review.save(update_fields=["rating", "comment"])
+    
+    # Save dynamic responses
+    from cafe_pos.models import FeedbackQuestion, FeedbackResponse
+    questions = FeedbackQuestion.objects.filter(cafe=order.cafe)
+    for q in questions:
+        key = f"q_{q.id}"
+        val = request.POST.get(key, "").strip()
+        if val:
+            if q.type == "rating":
+                try:
+                    r_val = int(val)
+                    FeedbackResponse.objects.create(review=review, question=q, rating_value=r_val)
+                except ValueError:
+                    pass
+            else:
+                FeedbackResponse.objects.create(review=review, question=q, text_value=val)
+
     staff_ids = {
         line.prepared_by_id
         for line in order.line_items.all()

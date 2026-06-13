@@ -1,0 +1,16 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Thank You!{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 40px 20px;">
+    <div style="margin-bottom: 20px; color: var(--primary, #c8903e);">
+        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+    </div>
+    <h2 style="font-family: var(--font-heading, serif); margin-bottom: 12px; font-size: 2rem;">Thank you!</h2>
+    <p style="color: var(--muted, #666); font-size: 1.1rem; max-width: 400px; margin: 0 auto;">Your feedback has been successfully submitted. We appreciate you taking the time to help us improve.</p>
+</div>
+{% endblock %}

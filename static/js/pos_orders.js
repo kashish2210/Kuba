@@ -228,6 +228,33 @@
 
         actionsEl.appendChild(delBtn);
         actionsEl.appendChild(editBtn);
+      } else if (order.status === "paid") {
+        var emailBtn = document.createElement("button");
+        emailBtn.className = "ord-action-btn ord-action-edit";
+        emailBtn.innerHTML = "Email Receipt";
+        emailBtn.addEventListener("click", function () {
+          var to = prompt("Send receipt to email:", order.customer ? order.customer.email : "");
+          if (to) {
+            api(U.orderRoot + order.id + "/email-receipt/", "POST", { email: to })
+              .then(function () { toast("Receipt sent."); })
+              .catch(function(err) { toast(err.error || "Failed", true); });
+          }
+        });
+
+        var fbBtn = document.createElement("button");
+        fbBtn.className = "ord-action-btn ord-action-edit";
+        fbBtn.innerHTML = "Send Feedback Request";
+        fbBtn.addEventListener("click", function () {
+          var to = prompt("Send feedback request to email:", order.customer ? order.customer.email : "");
+          if (to) {
+            api(U.orderRoot + order.id + "/email-feedback/", "POST", { email: to })
+              .then(function () { toast("Feedback request sent."); })
+              .catch(function(err) { toast(err.error || "Failed", true); });
+          }
+        });
+
+        actionsEl.appendChild(emailBtn);
+        actionsEl.appendChild(fbBtn);
       }
     }).catch(function () {
       toast("Could not load order details.", true);

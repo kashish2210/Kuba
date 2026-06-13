@@ -39,14 +39,35 @@
         {% if error %}<div class="error">{{ error }}</div>{% endif %}
         <div class="meta"><span>Customer</span><strong>{% if order.customer_id %}{{ order.customer.name }}{% else %}Guest{% endif %}</strong></div>
         <div class="meta"><span>Total</span><strong>₹{{ order.total }}</strong></div>
-        <div class="stars" aria-label="Rating">
+        <div class="stars" aria-label="Rating" style="margin: 12px 0;">
             <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
             <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
             <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
             <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
             <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
         </div>
-        <textarea name="comment" placeholder="Tell us about your experience"></textarea>
+        
+        {% for q in questions %}
+            <div style="margin: 16px 0; padding-top: 16px; border-top: 1px dashed #ddd;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">{{ q.question_text }}</label>
+                {% if q.type == 'rating' %}
+                    <div class="stars" aria-label="Rating" style="margin: 8px 0; justify-content: flex-start;">
+                        <input type="radio" id="q_{{ q.id }}_5" name="q_{{ q.id }}" value="5"><label for="q_{{ q.id }}_5">★</label>
+                        <input type="radio" id="q_{{ q.id }}_4" name="q_{{ q.id }}" value="4"><label for="q_{{ q.id }}_4">★</label>
+                        <input type="radio" id="q_{{ q.id }}_3" name="q_{{ q.id }}" value="3"><label for="q_{{ q.id }}_3">★</label>
+                        <input type="radio" id="q_{{ q.id }}_2" name="q_{{ q.id }}" value="2"><label for="q_{{ q.id }}_2">★</label>
+                        <input type="radio" id="q_{{ q.id }}_1" name="q_{{ q.id }}" value="1"><label for="q_{{ q.id }}_1">★</label>
+                    </div>
+                {% else %}
+                    <textarea name="q_{{ q.id }}" style="min-height: 60px;" placeholder="Your answer"></textarea>
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+        <div style="margin: 16px 0; padding-top: 16px; border-top: 1px dashed #ddd;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px;">Additional Comments</label>
+            <textarea name="comment" placeholder="Tell us about your experience"></textarea>
+        </div>
         <button type="submit">Submit review</button>
     </form>
     {% endif %}

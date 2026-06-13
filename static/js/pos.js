@@ -564,12 +564,34 @@
             "<button class=\"floor-unlock-btn\" title=\"Mark table as empty\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align: middle; margin-right: 3px;\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 9.9-1\"></path></svg> Unlock</button>";
           cell.querySelector(".floor-unlock-btn").addEventListener("click", function (e) {
             e.stopPropagation();
-            if (!confirm("Mark Table " + t.number + " as empty and unlock it?")) return;
-            var url = U.tableRelease.replace("__pk__", t.id);
-            api(url, "POST", {}).then(function () {
-              toast("Table " + t.number + " unlocked");
-              openFloor();
-            }).catch(showErr);
+            
+            var modal = $("prompt-modal");
+            $("prompt-title").textContent = "Unlock Table " + t.number;
+            
+            var html = '<p style="margin:0 0 16px;font-size:0.95rem;color:var(--muted);">Mark Table ' + t.number + ' as empty and unlock it?</p>';
+            if (t.has_reviewed) {
+                html += '<div style="padding:10px;background:#e7f6ec;color:#15803d;border-radius:8px;font-size:0.85rem;margin-bottom:16px;">✓ This customer has already submitted a review.</div>';
+            }
+            html += '<div class="prompt-field"><label style="font-weight:600;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Customer Email (Feedback Request)</label>';
+            html += '<input id="unlock-email" type="email" class="form-input" placeholder="Optional" value="' + (t.customer_email || "") + '" style="margin-top:6px;" autocomplete="off">';
+            html += '<p style="font-size:0.75rem;color:var(--muted);margin-top:6px;">If provided, we will send an email requesting feedback from the customer.</p></div>';
+            html += '<button class="pay-confirm" id="unlock-ok" style="margin-top:16px;">Unlock Table</button>';
+            
+            $("prompt-body").innerHTML = html;
+            modal.hidden = false;
+            
+            $("unlock-email").focus();
+            
+            $("unlock-ok").onclick = function() {
+                var email = $("unlock-email").value.trim();
+                modal.hidden = true;
+                
+                var url = U.tableRelease.replace("__pk__", t.id);
+                api(url, "POST", { email_customer: email }).then(function () {
+                  toast("Table " + t.number + " unlocked");
+                  openFloor();
+                }).catch(showErr);
+            };
           });
           cell.addEventListener("click", function () {
             api(U.orderStart, "POST", { table: t.id, current_order: order ? order.id : null }).then(function (d) {
@@ -777,11 +799,22 @@
 
     $("btn-email-receipt").addEventListener("click", function () {
       if (!paidOrderId) return;
-      promptModal("Email receipt", [{ name: "email", label: "Send to", type: "email" }], function (vals) {
+      promptModal("Email Receipt", [{ name: "email", label: "Send to", type: "email" }], function (vals) {
         var to = (vals.email || paidCustomerEmail || "").trim();
         if (!to) { toast("Enter an email address"); return; }
         api(U.orderRoot + paidOrderId + "/email-receipt/", "POST", { email: to })
           .then(function () { toast("Receipt sent to " + to); })
+          .catch(showErr);
+      });
+    });
+
+    $("btn-email-feedback").addEventListener("click", function () {
+      if (!paidOrderId) return;
+      promptModal("Send Feedback Request", [{ name: "email", label: "Send to", type: "email" }], function (vals) {
+        var to = (vals.email || paidCustomerEmail || "").trim();
+        if (!to) { toast("Enter an email address"); return; }
+        api(U.orderRoot + paidOrderId + "/email-feedback/", "POST", { email: to })
+          .then(function () { toast("Feedback request sent to " + to); })
           .catch(showErr);
       });
     });

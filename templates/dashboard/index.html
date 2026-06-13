@@ -1,300 +1,280 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Dashboard — {{ cafe.name }}{% endblock %}
 {% block breadcrumb %}Dashboard{% endblock %}
 
 {% block extra_css %}
 <style>
-.dash-widgets { display:flex; flex-direction:column; gap:16px; margin-top:24px; }
-.dash-widget { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
-.dash-widget-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--line); background:var(--bg); cursor:grab; user-select:none; gap:8px; }
-.dash-widget-header:active { cursor:grabbing; }
-.dash-widget-title { font-size:.82rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); display:flex; align-items:center; gap:7px; }
-.dash-widget-drag-handle { color:var(--line); font-size:1.1rem; }
-.dash-widget.dragging { opacity:.4; }
-.dash-widget.drag-over { outline:2px dashed var(--primary); outline-offset:2px; }
-.dash-widget-body { padding:0; }
+/* Modern, premium aesthetics for dashboard */
+.dashboard-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px; gap:16px; flex-wrap:wrap; }
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin-bottom:24px; }
+.kpi-card { 
+    background: var(--panel); 
+    border: 1px solid var(--line); 
+    border-radius: 16px; 
+    padding: 20px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kpi-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+.kpi-card::before { content: ''; position: absolute; top:0; left:0; width:100%; height:4px; }
+.kpi-card.kpi-revenue::before { background: linear-gradient(90deg, #c8903e, #e2ae61); }
+.kpi-card.kpi-orders::before { background: linear-gradient(90deg, #3498db, #6ab0e8); }
+.kpi-card.kpi-monthly::before { background: linear-gradient(90deg, #2ecc71, #69df9b); }
+.kpi-card.kpi-tables::before { background: linear-gradient(90deg, #9b59b6, #c288d6); }
 
-/* Quick link cards */
-.quick-links { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; padding:16px; }
-.quick-link { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:18px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--line); text-decoration:none; color:var(--ink); font-weight:700; font-size:.82rem; text-align:center; transition:.15s; }
-.quick-link:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+.kpi-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+.kpi-value { font-size: 2rem; font-weight: 800; font-family: var(--font-heading, serif); color: var(--ink); }
+.kpi-sub { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; font-weight: 500; }
+
+.charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+@media(max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.chart-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+.chart-card h3 { font-size: 1.1rem; margin-bottom: 16px; font-weight: 700; color: var(--ink); display:flex; align-items:center; gap:8px; }
+.chart-container { position: relative; width: 100%; height: 280px; }
+
+/* Quick Links & Bottom Row */
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media(max-width: 1024px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+.quick-links { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
+.quick-link { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:18px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line); text-decoration:none; color:var(--ink); font-weight:700; font-size:.85rem; text-align:center; transition:.2s ease; }
+.quick-link:hover { background:var(--primary); color:#fff; border-color:var(--primary); transform: translateY(-3px); box-shadow: 0 6px 12px rgba(200, 144, 62, 0.2); }
 .quick-link:hover svg { stroke:#fff; }
-.quick-link svg { width:22px; height:22px; stroke:var(--primary); fill:none; stroke-width:2; transition:.15s; }
+.quick-link svg { width:24px; height:24px; stroke:var(--primary); fill:none; stroke-width:2; transition:.2s ease; }
+
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+.data-table th { font-weight: 600; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header animate-in" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;">
+<div class="dashboard-header animate-in">
     <div>
         <h1 class="page-title">Welcome back, {{ request.user.username }}!</h1>
         <p class="text-muted">Managing <strong>{{ cafe.name }}</strong> · {{ cafe.subdomain }}.{{ base_domain }}</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
-        <button id="customize-toggle" class="btn btn-ghost btn-sm" title="Customise dashboard layout">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Customise
-        </button>
-        <a href="{% url 'pos:terminal' %}" class="btn btn-primary btn-sm"
-           onclick="event.preventDefault(); openEmbedded('{% url 'pos:terminal' %}', 'POS Terminal');">Open POS</a>
+        <a href="{% url 'pos:terminal' %}" class="btn btn-primary"
+           onclick="event.preventDefault(); openEmbedded('{% url 'pos:terminal' %}', 'POS Terminal');">Open POS Terminal</a>
     </div>
 </div>
 
-<!-- Stat cards (always visible, no drag) -->
-<div class="stats-grid animate-in" style="animation-delay:0.05s;" id="stats-grid">
-    <div class="stat-card" data-stat-id="products">
-        <div class="stat-icon amber">
-            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </div>
-        <div class="stat-info">
-            <div class="stat-label">Products</div>
-            <div class="stat-value">{{ stat_products }}</div>
-            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_categories }} categories</div>
+<!-- KPI Cards -->
+<div class="kpi-grid animate-in" style="animation-delay:0.05s;">
+    <div class="kpi-card kpi-revenue">
+        <div class="kpi-title">Today's Revenue</div>
+        <div class="kpi-value">₹{{ today_revenue|floatformat:2 }}</div>
+        <div class="kpi-sub">Total sales for today</div>
+    </div>
+    <div class="kpi-card kpi-orders">
+        <div class="kpi-title">Today's Orders</div>
+        <div class="kpi-value">{{ today_count }}</div>
+        <div class="kpi-sub">Paid orders today</div>
+    </div>
+    <div class="kpi-card kpi-monthly">
+        <div class="kpi-title">Monthly Revenue</div>
+        <div class="kpi-value">₹{{ monthly_revenue|floatformat:2 }}</div>
+        <div class="kpi-sub">Total sales this month</div>
+    </div>
+    <div class="kpi-card kpi-tables">
+        <div class="kpi-title">Active Tables</div>
+        <div class="kpi-value">{{ stat_tables }}</div>
+        <div class="kpi-sub">{{ stat_team }} active staff members</div>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="charts-grid animate-in" style="animation-delay:0.1s;">
+    <!-- Line Chart: Revenue Trend -->
+    <div class="chart-card">
+        <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg> Revenue Trend (Last 7 Days)</h3>
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
         </div>
     </div>
-    <div class="stat-card" data-stat-id="tables">
-        <div class="stat-icon sage">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-        </div>
-        <div class="stat-info">
-            <div class="stat-label">Tables</div>
-            <div class="stat-value">{{ stat_tables }}</div>
-            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_floors }} floors</div>
-        </div>
-    </div>
-    <div class="stat-card" data-stat-id="team">
-        <div class="stat-icon" style="background:rgba(52,152,219,0.15);color:#3498db;">
-            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
-        </div>
-        <div class="stat-info">
-            <div class="stat-label">Team Members</div>
-            <div class="stat-value">{{ stat_team }}</div>
-            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">active</div>
-        </div>
-    </div>
-    <div class="stat-card" data-stat-id="offers">
-        <div class="stat-icon" style="background:rgba(155,89,182,0.15);color:#9b59b6;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </div>
-        <div class="stat-info">
-            <div class="stat-label">Active Offers</div>
-            <div class="stat-value">{{ stat_coupons|add:stat_promotions }}</div>
-            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_coupons }} coupon{{ stat_coupons|pluralize }} · {{ stat_promotions }} promo{{ stat_promotions|pluralize }}</div>
+    
+    <!-- Doughnut Chart: Order Status -->
+    <div class="chart-card">
+        <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> Order Status (This Month)</h3>
+        <div class="chart-container">
+            <canvas id="statusChart"></canvas>
         </div>
     </div>
 </div>
 
-<!-- Draggable widgets -->
-<div class="dash-widgets animate-in" id="dash-widgets" style="animation-delay:0.1s;">
-
-    <!-- Quick links -->
-    <div class="dash-widget" data-widget-id="quick-links">
-        <div class="dash-widget-header">
-            <span class="dash-widget-title"><span class="dash-widget-drag-handle">⠿</span> Quick Links</span>
-            <button class="btn btn-ghost btn-sm widget-hide-btn" data-widget="quick-links" title="Hide">✕</button>
-        </div>
-        <div class="dash-widget-body">
-            <div class="quick-links">
-                <a href="{% url 'pos:terminal' %}" class="quick-link"
-                   onclick="event.preventDefault(); openEmbedded('{% url 'pos:terminal' %}', 'POS Terminal');">
-                    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    POS Terminal
-                </a>
-                <a href="{% url 'pos:kds' %}" class="quick-link"
-                   onclick="event.preventDefault(); openEmbedded('{% url 'pos:kds' %}', 'Kitchen Display');">
-                    <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-                    KDS
-                </a>
-                <a href="{% url 'dashboard:products' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    Products
-                </a>
-                <a href="{% url 'dashboard:floors' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-                    Tables
-                </a>
-                <a href="{% url 'dashboard:coupons' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                    Offers
-                </a>
-                <a href="{% url 'dashboard:reports' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Reports
-                </a>
-                <a href="{% url 'dashboard:users' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
-                    Team
-                </a>
-                <a href="{% url 'dashboard:customize' %}" class="quick-link">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    Settings
-                </a>
-            </div>
+<!-- Bottom Grid -->
+<div class="bottom-grid animate-in" style="animation-delay:0.15s;">
+    <!-- Top Products -->
+    <div class="chart-card" style="padding:0;">
+        <h3 style="padding: 20px 20px 0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Top Selling Products</h3>
+        <div style="padding: 10px 20px 20px; height:280px;">
+            <canvas id="productsChart"></canvas>
         </div>
     </div>
-
-    <!-- Recent activity -->
-    <div class="dash-widget" data-widget-id="activity">
-        <div class="dash-widget-header">
-            <span class="dash-widget-title"><span class="dash-widget-drag-handle">⠿</span> Recent Activity</span>
-            <div style="display:flex;gap:6px;align-items:center;">
-                <a href="{% url 'dashboard:audit-log' %}" class="btn btn-ghost btn-sm">View all</a>
-                <button class="btn btn-ghost btn-sm widget-hide-btn" data-widget="activity" title="Hide">✕</button>
-            </div>
-        </div>
-        <div class="dash-widget-body" style="padding:0;">
-            {% if recent_audit %}
-            <table class="data-table" style="margin:0;">
-                <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead>
-                <tbody>
-                {% for log in recent_audit %}
-                <tr>
-                    <td class="text-sm text-muted">{{ log.created_at|date:"d M, H:i" }}</td>
-                    <td>{{ log.actor.username|default:"system" }}</td>
-                    <td><span class="badge badge-neutral">{{ log.get_action_display }}</span></td>
-                    <td class="text-sm">{{ log.message }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state" style="padding:30px 20px;">
-                <h3 class="empty-state-title">No activity yet</h3>
-                <p class="empty-state-desc">Actions you take will appear here.</p>
-            </div>
-            {% endif %}
+    
+    <!-- Quick Links -->
+    <div class="chart-card">
+        <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Quick Actions</h3>
+        <div class="quick-links" style="margin-top:10px;">
+            <a href="{% url 'pos:terminal' %}" class="quick-link" onclick="event.preventDefault(); openEmbedded('{% url 'pos:terminal' %}', 'POS Terminal');">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                POS
+            </a>
+            <a href="{% url 'pos:kds' %}" class="quick-link" onclick="event.preventDefault(); openEmbedded('{% url 'pos:kds' %}', 'Kitchen Display');">
+                <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                KDS
+            </a>
+            <a href="{% url 'dashboard:products' %}" class="quick-link">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Products
+            </a>
+            <a href="{% url 'dashboard:reports' %}" class="quick-link">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Reports
+            </a>
         </div>
     </div>
-
-</div>
-
-<!-- Hidden widgets restore bar -->
-<div id="hidden-widgets-bar" style="display:none;margin-top:12px;padding:10px 14px;background:var(--bg);border:1px dashed var(--line);border-radius:var(--radius);font-size:.82rem;color:var(--muted);">
-    Hidden: <span id="hidden-list"></span>
 </div>
 
 <script>
-(function(){
-    var STORE_KEY = 'dash_layout_{{ cafe.id }}';
-    var HIDE_KEY  = 'dash_hidden_{{ cafe.id }}';
-    var container = document.getElementById('dash-widgets');
-    var toggleBtn = document.getElementById('customize-toggle');
-    var customising = false;
+document.addEventListener("DOMContentLoaded", function() {
+    // Shared chart styling defaults
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+    Chart.defaults.color = "#8b8173";
+    
+    // Parse JSON Data from Django
+    const rawTrend = '{{ revenue_trend_json|escapejs }}';
+    const trendData = rawTrend ? JSON.parse(rawTrend) : [];
+    
+    const rawProducts = '{{ top_products_json|escapejs }}';
+    const productsData = rawProducts ? JSON.parse(rawProducts) : [];
+    
+    const rawStats = '{{ order_stats_json|escapejs }}';
+    const statsData = rawStats ? JSON.parse(rawStats) : { paid:0, cancelled:0, draft:0 };
 
-    /* ── Persist & restore order ── */
-    function saveOrder() {
-        var ids = Array.from(container.querySelectorAll('.dash-widget')).map(function(w){ return w.dataset.widgetId; });
-        localStorage.setItem(STORE_KEY, JSON.stringify(ids));
-    }
-    function loadOrder() {
-        try {
-            var ids = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
-            if (!ids) return;
-            ids.forEach(function(id) {
-                var el = container.querySelector('[data-widget-id="' + id + '"]');
-                if (el) container.appendChild(el);
-            });
-        } catch(e){}
-    }
-
-    /* ── Persist & restore hidden state ── */
-    function getHidden() {
-        try { return JSON.parse(localStorage.getItem(HIDE_KEY) || '[]'); } catch(e){ return []; }
-    }
-    function saveHidden(ids) { localStorage.setItem(HIDE_KEY, JSON.stringify(ids)); }
-    function applyHidden() {
-        var hidden = getHidden();
-        var bar = document.getElementById('hidden-widgets-bar');
-        var list = document.getElementById('hidden-list');
-        container.querySelectorAll('.dash-widget').forEach(function(w) {
-            if (hidden.indexOf(w.dataset.widgetId) !== -1) {
-                w.style.display = 'none';
+    // 1. Revenue Trend Line Chart
+    if (document.getElementById('revenueChart')) {
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'line',
+            data: {
+                labels: trendData.map(d => d.date),
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: trendData.map(d => d.revenue),
+                    borderColor: '#c8903e',
+                    backgroundColor: 'rgba(200, 144, 62, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#c8903e',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 27, 24, 0.9)',
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(226, 221, 212, 0.5)', drawBorder: false },
+                        ticks: { callback: function(value) { return '₹' + value; } }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false }
+                    }
+                }
             }
         });
-        if (hidden.length) {
-            bar.style.display = 'block';
-            list.innerHTML = hidden.map(function(id) {
-                return '<button class="btn btn-ghost btn-sm" onclick="restoreWidget(\'' + id + '\')" style="margin:0 4px;">' + id + ' ↩</button>';
-            }).join('');
-        } else {
-            bar.style.display = 'none';
-        }
     }
 
-    window.restoreWidget = function(id) {
-        var hidden = getHidden().filter(function(h){ return h !== id; });
-        saveHidden(hidden);
-        var el = container.querySelector('[data-widget-id="' + id + '"]');
-        if (el) el.style.display = '';
-        applyHidden();
-    };
-
-    /* ── Hide buttons ── */
-    document.querySelectorAll('.widget-hide-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var id = btn.dataset.widget;
-            var hidden = getHidden();
-            if (hidden.indexOf(id) === -1) hidden.push(id);
-            saveHidden(hidden);
-            applyHidden();
-        });
-    });
-
-    /* ── Toggle customise mode (shows hide buttons, enables drag) ── */
-    toggleBtn.addEventListener('click', function() {
-        customising = !customising;
-        toggleBtn.textContent = customising ? '✓ Done' : '⚙ Customise';
-        document.querySelectorAll('.widget-hide-btn').forEach(function(b){ b.style.display = customising ? '' : 'none'; });
-    });
-
-    /* ── Drag-to-reorder ── */
-    var dragging = null;
-    container.querySelectorAll('.dash-widget').forEach(function(widget) {
-        widget.addEventListener('dragstart', function(e) {
-            dragging = widget;
-            widget.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        });
-        widget.addEventListener('dragend', function() {
-            widget.classList.remove('dragging');
-            container.querySelectorAll('.dash-widget').forEach(function(w){ w.classList.remove('drag-over'); });
-            dragging = null;
-            saveOrder();
-        });
-        widget.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            if (dragging && dragging !== widget) widget.classList.add('drag-over');
-        });
-        widget.addEventListener('dragleave', function() { widget.classList.remove('drag-over'); });
-        widget.addEventListener('drop', function(e) {
-            e.preventDefault();
-            widget.classList.remove('drag-over');
-            if (dragging && dragging !== widget) {
-                /* insert before this widget */
-                container.insertBefore(dragging, widget);
-                saveOrder();
+    // 2. Order Status Doughnut Chart
+    if (document.getElementById('statusChart')) {
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Draft / Open', 'Cancelled'],
+                datasets: [{
+                    data: [statsData.paid, statsData.draft, statsData.cancelled],
+                    backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 27, 24, 0.9)',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                }
             }
         });
+    }
 
-        /* Make header the drag handle */
-        var header = widget.querySelector('.dash-widget-header');
-        if (header) {
-            header.setAttribute('draggable', 'true');
-            header.addEventListener('dragstart', function(e) {
-                e.stopPropagation();
-                dragging = widget;
-                widget.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-            });
-        }
-        widget.setAttribute('draggable', 'false');
-    });
-
-    /* ── Init ── */
-    loadOrder();
-    applyHidden();
-    /* Hide the ✕ buttons by default (only show in customise mode) */
-    document.querySelectorAll('.widget-hide-btn').forEach(function(b){ b.style.display = 'none'; });
-})();
+    // 3. Top Products Bar Chart
+    if (document.getElementById('productsChart')) {
+        new Chart(document.getElementById('productsChart'), {
+            type: 'bar',
+            data: {
+                labels: productsData.map(d => d.name),
+                datasets: [{
+                    label: 'Units Sold',
+                    data: productsData.map(d => d.sold),
+                    backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                    borderRadius: 6,
+                    barThickness: 'flex',
+                    maxBarThickness: 32
+                }]
+            },
+            options: {
+                indexAxis: 'y', // horizontal bar chart
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 27, 24, 0.9)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(226, 221, 212, 0.5)', drawBorder: false }
+                    },
+                    y: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { font: { weight: 'bold' } }
+                    }
+                }
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

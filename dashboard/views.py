@@ -28,6 +28,9 @@ from cafe_pos.models import (
     Profile,
     Promotion,
     ReceiptSettings,
+    FeedbackQuestion,
+    FeedbackResponse,
+    OrderReview,
 )
 from tenants.models import AuditLog
 from tenants.utils import log_action
@@ -74,17 +77,69 @@ def home(request):
     return cafe_dashboard(request)
 
 
+from cafe_pos.models import OrderLineItem
+
 @cafe_admin_required(require_admin=False)
 def cafe_dashboard(request):
     cafe = request.cafe
+    today = timezone.localtime().date()
+    start_of_month = today.replace(day=1)
+    
+    # 1. Today's Revenue and Orders
+    today_orders = Order.objects.filter(cafe=cafe, created_at__date=today, status=Order.OrderStatus.PAID)
+    today_revenue = today_orders.aggregate(total=Sum('total'))['total'] or 0
+    today_count = today_orders.count()
+    
+    # 2. Monthly Revenue
+    month_orders = Order.objects.filter(cafe=cafe, created_at__date__gte=start_of_month, status=Order.OrderStatus.PAID)
+    monthly_revenue = month_orders.aggregate(total=Sum('total'))['total'] or 0
+    
+    # 3. Last 7 Days Revenue Trend
+    seven_days_ago = today - datetime.timedelta(days=6)
+    recent_orders = Order.objects.filter(
+        cafe=cafe, 
+        created_at__date__gte=seven_days_ago,
+        status=Order.OrderStatus.PAID
+    ).annotate(date=TruncDate('created_at')).values('date').annotate(revenue=Sum('total')).order_by('date')
+    
+    # Fill in missing days
+    revenue_trend = []
+    trend_dict = {str(item['date']): float(item['revenue']) for item in recent_orders}
+    for i in range(7):
+        d = seven_days_ago + datetime.timedelta(days=i)
+        revenue_trend.append({
+            "date": d.strftime("%b %d"),
+            "revenue": trend_dict.get(str(d), 0.0)
+        })
+
+    # 4. Top 5 Products by Quantity Sold (Paid orders only)
+    top_products = Product.objects.filter(cafe=cafe, order_lines__order__status=Order.OrderStatus.PAID) \
+        .annotate(sold=Sum('order_lines__quantity')) \
+        .exclude(sold=None) \
+        .order_by('-sold')[:5]
+        
+    top_products_data = [{"name": p.name, "sold": p.sold} for p in top_products]
+
+    # 5. Order Status Breakdown
+    all_recent = Order.objects.filter(cafe=cafe, created_at__date__gte=start_of_month)
+    status_counts = all_recent.values('status').annotate(count=Count('id'))
+    status_dict = {item['status']: item['count'] for item in status_counts}
+    order_stats = {
+        "paid": status_dict.get(Order.OrderStatus.PAID, 0),
+        "cancelled": status_dict.get(Order.OrderStatus.CANCELLED, 0),
+        "draft": status_dict.get(Order.OrderStatus.DRAFT, 0),
+    }
+
     context = {
-        "stat_products": Product.objects.filter(cafe=cafe).count(),
-        "stat_categories": ProductCategory.objects.filter(cafe=cafe).count(),
-        "stat_floors": Floor.objects.filter(cafe=cafe).count(),
-        "stat_tables": CafeTable.objects.filter(cafe=cafe).count(),
+        "today_revenue": today_revenue,
+        "today_count": today_count,
+        "monthly_revenue": monthly_revenue,
+        "revenue_trend_json": json.dumps(revenue_trend),
+        "top_products_json": json.dumps(top_products_data),
+        "order_stats_json": json.dumps(order_stats),
+        
         "stat_team": Profile.objects.filter(cafe=cafe, is_archived=False).count(),
-        "stat_coupons": Coupon.objects.filter(cafe=cafe, is_active=True).count(),
-        "stat_promotions": Promotion.objects.filter(cafe=cafe, is_active=True).count(),
+        "stat_tables": CafeTable.objects.filter(cafe=cafe).count(),
         "recent_audit": AuditLog.objects.filter(cafe=cafe)[:8],
     }
     return render(request, "dashboard/index.html", context)
@@ -1159,6 +1214,126 @@ def reports_export(request):
     response["Content-Disposition"] = f'attachment; filename="{fname}"'
     return response
 
+
+
+@cafe_admin_required
+def feedback_settings(request):
+    cafe = request.cafe
+    receipt_settings, _ = ReceiptSettings.objects.get_or_create(cafe=cafe)
+    
+    if request.method == "POST":
+        receipt_settings.feedback_email_html = request.POST.get("feedback_email_html", "")
+        receipt_settings.save(update_fields=["feedback_email_html"])
+        
+        # Handle dynamic questions
+        q_ids = request.POST.getlist("question_id")
+        q_texts = request.POST.getlist("question_text")
+        q_types = request.POST.getlist("question_type")
+        
+        # Delete existing ones not in the submitted list
+        existing_ids = [int(i) for i in q_ids if i.isdigit()]
+        FeedbackQuestion.objects.filter(cafe=cafe).exclude(id__in=existing_ids).delete()
+        
+        for idx, text in enumerate(q_texts):
+            text = text.strip()
+            if not text:
+                continue
+            qid = q_ids[idx] if idx < len(q_ids) else ""
+            qtype = q_types[idx] if idx < len(q_types) else "rating"
+            
+            if qid.isdigit():
+                q = FeedbackQuestion.objects.get(id=int(qid), cafe=cafe)
+                q.question_text = text
+                q.type = qtype
+                q.sort_order = idx
+                q.save()
+            else:
+                FeedbackQuestion.objects.create(
+                    cafe=cafe, question_text=text, type=qtype, sort_order=idx
+                )
+                
+        messages.success(request, "Feedback settings updated successfully.")
+        return redirect("dashboard:feedback-settings")
+        
+    questions = FeedbackQuestion.objects.filter(cafe=cafe).order_by("sort_order")
+    
+    return render(request, "dashboard/feedback_settings.html", {
+        "receipt_settings": receipt_settings,
+        "questions": questions,
+    })
+
+@cafe_admin_required
+def feedback_report(request):
+    cafe = request.cafe
+    reviews = OrderReview.objects.filter(cafe=cafe).select_related("order", "customer", "cashier").prefetch_related("responses__question", "kitchen_staff").order_by("-created_at")
+    
+    # Analytics
+    total_reviews = reviews.count()
+    avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+    
+    # Rating Distribution (1-5 stars)
+    distribution = list(reviews.values('rating').annotate(count=Count('id')).order_by('rating'))
+    dist_dict = {item['rating']: item['count'] for item in distribution}
+    rating_distribution = [
+        {"rating": i, "count": dist_dict.get(i, 0)} for i in range(1, 6)
+    ]
+    
+    # Per-question averages
+    question_stats = []
+    from cafe_pos.models import FeedbackQuestion, FeedbackResponse
+    for q in FeedbackQuestion.objects.filter(cafe=cafe, type='rating'):
+        avg = FeedbackResponse.objects.filter(review__cafe=cafe, question=q).aggregate(Avg('rating_value'))['rating_value__avg'] or 0
+        question_stats.append({
+            "question": q.question_text,
+            "avg": avg
+        })
+    
+    paginator = Paginator(reviews, 50)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, "dashboard/feedback_report.html", {
+        "page_obj": page_obj,
+        "total_reviews": total_reviews,
+        "avg_rating": avg_rating,
+        "rating_distribution_json": json.dumps(rating_distribution),
+        "question_stats_json": json.dumps(question_stats),
+    })
+
+
+@cafe_admin_required
+@require_POST
+def feedback_preview(request):
+    from cafe_pos.receipts import order_context
+    from django.template import Context, Template
+    from django.template.loader import render_to_string
+    from django.utils.safestring import mark_safe
+    
+    order = Order.objects.filter(cafe=request.cafe).order_by("-created_at").first()
+    if order is None:
+        return HttpResponse("<p style='padding:24px;font-family:sans-serif;color:#888'>No orders yet — take one in the POS to preview.</p>")
+        
+    html_template = (request.POST.get("template_html") or request.POST.get("feedback_email_html") or "").strip()
+    ctx = order_context(order)
+    ctx["items_table"] = mark_safe(ctx.get("items_table", ""))
+    ctx["logo"] = mark_safe(ctx.get("logo", ""))
+    
+    if not html_template:
+        html = f'''
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; text-align: center;">
+            <h2>Thank you for visiting {order.cafe.name}!</h2>
+            <p>We hope you enjoyed your order (<b>#{order.order_number}</b>).</p>
+            <p>Please take a moment to leave us a review. Your feedback helps us improve!</p>
+            <a href="{ctx.get('review_url', '#')}" style="display: inline-block; padding: 12px 24px; background: #c8903e; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">Leave a Review</a>
+        </div>
+        '''
+        return HttpResponse(html)
+        
+    try:
+        html = Template(html_template).render(Context(ctx))
+    except Exception as exc:
+        html = f"<p style='color:#c0392b;padding:24px;font-family:sans-serif'>Template error: {exc}</p>"
+    return HttpResponse(html)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Placeholders for deferred POS modules

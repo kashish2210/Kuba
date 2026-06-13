@@ -209,7 +209,10 @@
     <div class="pos-modal-card pos-modal-sm">
         <div class="pos-modal-head"><h3>Payment complete</h3></div>
         <div id="receipt-body"></div>
-        <button class="btn btn-secondary" id="btn-email-receipt" style="width:100%;margin-top:10px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Email receipt</button>
+        <div style="display:flex;gap:10px;margin-top:10px;">
+            <button class="btn btn-secondary" id="btn-email-receipt" style="flex:1;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Email Receipt</button>
+            <button class="btn btn-secondary" id="btn-email-feedback" style="flex:1;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Send Feedback Request</button>
+        </div>
         <button class="pay-confirm" id="btn-new-order">New order</button>
     </div>
 </div>

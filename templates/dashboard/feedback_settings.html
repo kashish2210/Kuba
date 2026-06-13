@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Feedback Settings — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Feedback Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    .q-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; background: #faf7f0; padding: 12px; border-radius: 8px; border: 1px solid var(--line, #e2ddd4); }
+    .q-text { flex: 1; }
+    .q-type { width: 160px; }
+    .q-remove { color: #dc2626; cursor: pointer; padding: 6px; }
+    .q-remove:hover { background: #fee2e2; border-radius: 6px; }
+    
+    .receipt-layout { display:grid; grid-template-columns:1fr 420px; gap:20px; align-items:start; }
+    @media (max-width: 1024px) { .receipt-layout { grid-template-columns: 1fr; } }
+    .pill-tray { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .pill { padding:6px 12px; border-radius:999px; background:var(--surface-alt,#f1ede6); border:1px solid var(--border,#e2ddd4); font-size:.82rem; font-weight:600; cursor:grab; user-select:none; }
+    .pill:hover { background:var(--primary,#c8903e); color:#fff; }
+    .receipt-preview-frame { width:100%; height:520px; border:1px solid var(--border,#e2ddd4); border-radius:12px; background:#f3efe8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Feedback Settings</h1>
+    <p class="text-muted">Customize the feedback form and the email sent to customers.</p>
+</div>
+
+<div class="receipt-layout">
+    <div>
+        <form method="post" class="dash-form" id="receipt-form">
+            {% csrf_token %}
+    
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-body">
+            <h3 class="card-title">Feedback Email Template</h3>
+            <p class="text-xs text-muted mb-3">HTML email sent to customers to request a review. Drag a data pill into the editor (or click it) to insert live order data.</p>
+            <div class="pill-tray">
+                <span class="pill" draggable="true" data-token="order_number">Order #</span>
+                <span class="pill" draggable="true" data-token="cafe_name">Cafe name</span>
+                <span class="pill" draggable="true" data-token="customer_name">Customer</span>
+                <span class="pill" draggable="true" data-token="total">Total</span>
+                <span class="pill" draggable="true" data-token="review_url">Review link</span>
+                <span class="pill" draggable="true" data-token="logo">Logo</span>
+            </div>
+            <textarea id="receipt-html" name="feedback_email_html" class="form-textarea" rows="10" style="font-family: monospace; width: 100%;" placeholder="<h1>Thank you!</h1><p><a href='{{ review_url }}'>Leave a review</a></p>">{{ receipt_settings.feedback_email_html }}</textarea>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-body">
+            <h3 class="card-title">Form Questions</h3>
+            <p class="text-xs text-muted mb-3">Add questions to your feedback form. All questions will be optional.</p>
+            
+            <div id="questions-list">
+                {% for q in questions %}
+                <div class="q-row">
+                    <input type="hidden" name="question_id" value="{{ q.id }}">
+                    <input type="text" name="question_text" class="form-input q-text" value="{{ q.question_text }}" placeholder="Question text (e.g. How was the food?)" required>
+                    <select name="question_type" class="form-select q-type">
+                        <option value="rating" {% if q.type == 'rating' %}selected{% endif %}>Star Rating (1-5)</option>
+                        <option value="text" {% if q.type == 'text' %}selected{% endif %}>Text Input</option>
+                    </select>
+                    <div class="q-remove" onclick="this.parentElement.remove()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="addQuestion()">+ Add Question</button>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </div>
+    
+    <div class="card"><div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 class="card-title">Live preview</h3>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-preview">Refresh</button>
+        </div>
+        <iframe class="receipt-preview-frame" id="receipt-preview"></iframe>
+    </div></div>
+</div>
+
+<template id="q-template">
+    <div class="q-row">
+        <input type="hidden" name="question_id" value="">
+        <input type="text" name="question_text" class="form-input q-text" value="" placeholder="Question text (e.g. How was the food?)" required>
+        <select name="question_type" class="form-select q-type">
+            <option value="rating">Star Rating (1-5)</option>
+            <option value="text">Text Input</option>
+        </select>
+        <div class="q-remove" onclick="this.parentElement.remove()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+        </div>
+    </div>
+</template>
+
+<script>
+    window.RECEIPT = { previewUrl: "{% url 'dashboard:feedback-preview' %}", csrf: "{{ csrf_token }}" };
+    
+    function addQuestion() {
+        const tpl = document.getElementById('q-template').content.cloneNode(true);
+        document.getElementById('questions-list').appendChild(tpl);
+    }
+</script>
+<script src="{% static 'js/receipt_editor.js' %}"></script>
+{% endblock %}

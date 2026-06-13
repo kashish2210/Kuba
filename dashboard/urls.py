@@ -58,6 +58,11 @@ urlpatterns = [
     path("receipts/preview/", views.receipt_preview, name="receipt-preview"),
     path("receipts/test/", views.receipt_test, name="receipt-test"),
 
+    # Feedback
+    path("feedback/", views.feedback_settings, name="feedback-settings"),
+    path("feedback/preview/", views.feedback_preview, name="feedback-preview"),
+    path("feedback/report/", views.feedback_report, name="feedback-report"),
+
     # Customize & audit
     path("customize/", views.customize, name="customize"),
     path("audit/", views.audit_log, name="audit-log"),
