@@ -7,3 +7,4 @@ django-jazzmin
 qrcode
 razorpay
 dotenv
+daphne
