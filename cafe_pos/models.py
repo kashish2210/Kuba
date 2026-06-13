@@ -46,11 +46,26 @@ class ProductCategory(models.Model):
 
 
 class Product(models.Model):
+    class UnitOfMeasure(models.TextChoices):
+        PER_PIECE = "per piece", "Per piece"
+        PER_CUP = "per cup", "Per cup"
+        PER_GLASS = "per glass", "Per glass"
+        PER_PLATE = "per plate", "Per plate"
+        PER_BOWL = "per bowl", "Per bowl"
+        PER_SLICE = "per slice", "Per slice"
+        PER_SERVING = "per serving", "Per serving"
+        PER_PACKET = "per packet", "Per packet"
+        PER_BOTTLE = "per bottle", "Per bottle"
+        PER_KILOGRAM = "per kilogram", "Per kilogram"
+        PER_GRAM = "per gram", "Per gram"
+        PER_LITRE = "per litre", "Per litre"
+        PER_MILLILITRE = "per millilitre", "Per millilitre"
+
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="products")
     name = models.CharField(max_length=200)
     category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, related_name="products")
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    unit_of_measure = models.CharField(max_length=50)
+    unit_of_measure = models.CharField(max_length=20, choices=UnitOfMeasure.choices)
     tax_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
