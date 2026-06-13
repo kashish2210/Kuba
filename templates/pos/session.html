@@ -12,7 +12,7 @@
 <div class="session-screen">
     <div class="session-card">
         <div class="session-logo">
-            {% if cafe.logo_svg %}{{ cafe.logo_svg|safe }}{% endif %}
+            {% include "partials/cafe_logo.html" %}
         </div>
         <h1>{{ cafe.name }}</h1>
 

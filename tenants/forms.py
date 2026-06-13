@@ -1,10 +1,28 @@
-from allauth.account.forms import SignupForm
+from allauth.account.forms import LoginForm, SignupForm
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 from .models import Cafe
 from .utils import is_subdomain_available, normalize_subdomain
+
+
+class CafeLoginForm(LoginForm):
+    """Refuse a login on a cafe subdomain unless the account belongs to that cafe."""
+
+    def clean(self):
+        cleaned = super().clean()
+        user = getattr(self, "user", None)
+        request = getattr(self, "request", None)
+        cafe = getattr(request, "cafe", None) if request is not None else None
+        if user is not None and cafe is not None and not user.is_superuser:
+            profile = getattr(user, "profile", None)
+            if profile is None or profile.cafe_id != cafe.id:
+                raise forms.ValidationError(
+                    f"This account doesn't belong to {cafe.name}. "
+                    "Please sign in at your own cafe's address."
+                )
+        return cleaned
 
 
 class CafeCreationForm(forms.ModelForm):

@@ -32,6 +32,20 @@ urlpatterns = [
     path("team/<int:pk>/archive/", views.user_archive, name="user-archive"),
     path("team/<int:pk>/password/", views.user_password, name="user-password"),
 
+    # Coupons
+    path("coupons/", views.coupons, name="coupons"),
+    path("coupons/add/", views.coupon_create, name="coupon-create"),
+    path("coupons/<int:pk>/edit/", views.coupon_update, name="coupon-update"),
+    path("coupons/<int:pk>/delete/", views.coupon_delete, name="coupon-delete"),
+
+    # Payment settings
+    path("payment-methods/", views.payment_settings, name="payment-methods"),
+
+    # Receipts
+    path("receipts/", views.receipt_settings, name="receipts"),
+    path("receipts/preview/", views.receipt_preview, name="receipt-preview"),
+    path("receipts/test/", views.receipt_test, name="receipt-test"),
+
     # Customize & audit
     path("customize/", views.customize, name="customize"),
     path("audit/", views.audit_log, name="audit-log"),
@@ -41,6 +55,4 @@ urlpatterns = [
     path("kds/", views.coming_soon, name="kds"),
     path("reports/", views.coming_soon, name="reports"),
     path("bookings/", views.coming_soon, name="bookings"),
-    path("payment-methods/", views.coming_soon, name="payment-methods"),
-    path("coupons/", views.coming_soon, name="coupons"),
 ]

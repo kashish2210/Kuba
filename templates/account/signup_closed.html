@@ -1,19 +1,19 @@
 {% extends "account/base_entrance.html" %}
 
-{% block title %}Signup Closed — KUBA Cafe POS{% endblock %}
+{% block title %}Sign in to {{ cafe.name|default:"your cafe" }}{% endblock %}
 
 {% block content %}
 <div class="auth-form-header">
-    <h2 class="auth-form-title">Registration Closed</h2>
-    <p class="auth-form-subtitle">New signups are currently disabled</p>
+    <h2 class="auth-form-title">{% if cafe %}{{ cafe.name }}{% else %}Cafe workspace{% endif %}</h2>
+    <p class="auth-form-subtitle">This is a cafe workspace — sign in with your staff account</p>
 </div>
 
 <div class="auth-info-card">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-    <span>We are not accepting new registrations at this time. Please contact the administrator for access.</span>
+    <span>New cafes are created at <strong>{{ base_domain }}</strong>. This address ({{ cafe.subdomain }}.{{ base_domain }}) is for {{ cafe.name|default:"this cafe" }}'s team to log in.</span>
 </div>
 
-<div class="auth-switch">
-    Already have an account? <a href="{% url 'account_login' %}">Sign in here</a>
+<div class="auth-switch" style="margin-top:18px;">
+    <a href="{% url 'account_login' %}" class="auth-btn" style="display:inline-flex;width:auto;padding:10px 22px;text-decoration:none;">Log in to {{ cafe.name|default:"your cafe" }}</a>
 </div>
 {% endblock %}

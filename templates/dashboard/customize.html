@@ -1,52 +1,143 @@
 {% extends "base.html" %}
 
-{% block title %}Customize — {{ cafe.name }}{% endblock %}
+{% block title %}Customize - {{ cafe.name }}{% endblock %}
 {% block breadcrumb %}Customize Cafe{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:20px;">
-    <h1 class="page-title">Customize Cafe</h1>
-    <p class="text-muted">Branding and identity for {{ cafe.name }}.</p>
+<div class="dashboard-header customize-header">
+    <div>
+        <h1 class="page-title">Customize Cafe</h1>
+        <p class="text-muted">Branding, theme colors, and CSS overrides for {{ cafe.name }}.</p>
+    </div>
+    <span class="badge badge-neutral">{{ cafe.subdomain }}.{{ base_domain }}</span>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
-    <div class="card"><div class="card-body">
-        <form method="post" enctype="multipart/form-data" class="dash-form">
-            {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label">Cafe name</label>
-                {{ form.name }}
+<form method="post" enctype="multipart/form-data" class="dash-form customize-layout">
+    {% csrf_token %}
+    <div class="customize-main">
+        <section class="card">
+            <div class="card-header">
+                <h3 class="card-title">Identity</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Cafe name</label>
+                    {{ form.name }}
+                    {{ form.name.errors }}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Assigned subdomain</label>
+                    <input class="form-input" type="text" value="{{ cafe.subdomain }}.{{ base_domain }}" disabled>
+                    <div class="text-xs text-muted mt-sm">Only this cafe host receives these styles.</div>
+                </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Subdomain</label>
-                <input class="form-input" type="text" value="{{ cafe.subdomain }}.{{ base_domain }}" disabled>
-                <div class="text-xs text-muted" style="margin-top:4px;">Your subdomain is managed by the Kuba team. Contact support to change it.</div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Logo (SVG code)</label>
+                <label class="form-label" for="{{ form.logo_svg.id_for_label }}">Logo SVG code</label>
                 {{ form.logo_svg }}
-                <div class="text-xs text-muted" style="margin-top:4px;">Paste inline &lt;svg&gt; markup. It appears in your sidebar. Live preview on the right.</div>
+                {{ form.logo_svg.errors }}
+                <div class="text-xs text-muted mt-sm">Inline SVG appears in the sidebar brand mark.</div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Logo image (optional)</label>
+                <label class="form-label" for="{{ form.logo_image.id_for_label }}">Logo image</label>
                 {{ form.logo_image }}
+                {{ form.logo_image.errors }}
             </div>
+        </section>
 
+        <section class="card">
+            <div class="card-header">
+                <h3 class="card-title">Theme Colors</h3>
+            </div>
+            <div class="theme-grid">
+                <label class="theme-control">
+                    <span>{{ form.theme_primary_color.label }}</span>
+                    {{ form.theme_primary_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_primary_hover_color.label }}</span>
+                    {{ form.theme_primary_hover_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_accent_color.label }}</span>
+                    {{ form.theme_accent_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_sidebar_color.label }}</span>
+                    {{ form.theme_sidebar_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_surface_color.label }}</span>
+                    {{ form.theme_surface_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_surface_alt_color.label }}</span>
+                    {{ form.theme_surface_alt_color }}
+                </label>
+                <label class="theme-control">
+                    <span>{{ form.theme_text_color.label }}</span>
+                    {{ form.theme_text_color }}
+                </label>
+                <div class="form-group theme-radius">
+                    <label class="form-label" for="{{ form.theme_radius_px.id_for_label }}">{{ form.theme_radius_px.label }}</label>
+                    {{ form.theme_radius_px }}
+                    <div class="text-xs text-muted mt-sm">4 to 28 pixels.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <details class="advanced-css-panel">
+                <summary>
+                    <span>
+                        <strong>Advanced CSS</strong>
+                        <small>Reveal current CSS and add overrides</small>
+                    </span>
+                    <span class="badge badge-warning">Advanced</span>
+                </summary>
+
+                <div class="advanced-css-grid">
+                    <div class="form-group">
+                        <label class="form-label">Current generated CSS</label>
+                        <textarea class="form-textarea css-editor" rows="14" readonly>{{ cafe.generated_theme_css }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.custom_css.id_for_label }}">{{ form.custom_css.label }}</label>
+                        {{ form.custom_css }}
+                        {{ form.custom_css.errors }}
+                        <div class="text-xs text-muted mt-sm">Overrides are saved to {{ cafe.subdomain }}.{{ base_domain }} only and load after the main stylesheet.</div>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <div class="customize-actions">
             <button type="submit" class="btn btn-primary">Save changes</button>
-        </form>
-    </div></div>
+            <a href="{% url 'dashboard:index' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </div>
 
-    <div class="card"><div class="card-body" style="text-align:center;">
-        <h3 class="card-title" style="margin-bottom:12px;">Logo preview</h3>
-        <div id="logo-preview" style="width:90px;height:90px;margin:0 auto;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--surface-alt,#f1ede6);">
+    <aside class="customize-preview card">
+        <h3 class="card-title">Preview</h3>
+        <div id="logo-preview" class="custom-logo-preview">
             {% if cafe.logo_svg %}{{ cafe.logo_svg|safe }}{% else %}<span class="text-muted text-sm">No logo</span>{% endif %}
         </div>
-        {% if cafe.logo_image %}<img src="{{ cafe.logo_image.url }}" alt="logo" style="max-width:120px;margin-top:16px;border-radius:10px;">{% endif %}
-    </div></div>
-</div>
+        {% if cafe.logo_image %}
+            <img src="{{ cafe.logo_image.url }}" alt="{{ cafe.name }} logo" class="custom-image-preview">
+        {% endif %}
+
+        <div class="mini-dashboard-preview">
+            <div class="mini-sidebar"></div>
+            <div class="mini-content">
+                <span></span>
+                <strong></strong>
+                <button type="button">Button</button>
+            </div>
+        </div>
+    </aside>
+</form>
 
 <script>
 (function(){

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Receipts — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Receipts{% endblock %}
+
+{% block extra_css %}
+<style>
+    .receipt-layout { display:grid; grid-template-columns:1fr 420px; gap:20px; align-items:start; }
+    .pill-tray { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .pill { padding:6px 12px; border-radius:999px; background:var(--surface-alt,#f1ede6); border:1px solid var(--border,#e2ddd4); font-size:.82rem; font-weight:600; cursor:grab; user-select:none; }
+    .pill:hover { background:var(--primary,#c8903e); color:#fff; }
+    #receipt-html { width:100%; }
+    .receipt-preview-frame { width:100%; height:520px; border:1px solid var(--border,#e2ddd4); border-radius:12px; background:#f3efe8; }
+    .smtp-fields { margin-top:10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Receipts</h1>
+    <p class="text-muted">Design the receipt emailed to customers, and choose how it's sent.</p>
+</div>
+
+<div class="receipt-layout">
+    <div>
+        <form method="post" class="dash-form" id="receipt-form">
+            {% csrf_token %}
+
+            <div class="card" style="margin-bottom:18px;"><div class="card-body">
+                <label style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+                    {{ form.use_default }} <strong>Use the built-in beautiful receipt</strong>
+                </label>
+
+                <div id="custom-html-block">
+                    <h3 class="card-title" style="margin-bottom:6px;">Custom receipt HTML</h3>
+                    <p class="text-xs text-muted">Drag a data pill into the editor (or click it) to insert live order data.</p>
+                    <div class="pill-tray">
+                        {% for token, label in pills %}
+                            <span class="pill" draggable="true" data-token="{{ token }}">{{ label }}</span>
+                        {% endfor %}
+                    </div>
+                    {{ form.template_html }}
+                </div>
+            </div></div>
+
+            <div class="card" style="margin-bottom:18px;"><div class="card-body">
+                <h3 class="card-title" style="margin-bottom:10px;">Email delivery (SMTP)</h3>
+                <label style="display:flex;gap:10px;align-items:center;">
+                    {{ form.smtp_use_default }} Use the Kuba platform's default email
+                </label>
+                <div class="smtp-fields" id="smtp-fields">
+                    <div class="form-group"><label class="form-label">SMTP host</label>{{ form.smtp_host }}</div>
+                    <div class="form-group"><label class="form-label">Port</label>{{ form.smtp_port }}</div>
+                    <div class="form-group"><label class="form-label">Username</label>{{ form.smtp_user }}</div>
+                    <div class="form-group"><label class="form-label">Password</label>{{ form.smtp_password }}</div>
+                    <label style="display:flex;gap:10px;align-items:center;">{{ form.smtp_use_tls }} Use TLS</label>
+                    <div class="form-group" style="margin-top:10px;"><label class="form-label">From address</label>{{ form.from_email }}</div>
+                </div>
+            </div></div>
+
+            <button type="submit" class="btn btn-primary">Save receipt settings</button>
+        </form>
+
+        <form method="post" action="{% url 'dashboard:receipt-test' %}" class="dash-form" style="margin-top:14px;display:flex;gap:8px;align-items:flex-end;">
+            {% csrf_token %}
+            <div class="form-group" style="margin:0;flex:1;max-width:280px;">
+                <label class="form-label">Send a test receipt to</label>
+                <input class="form-input" type="email" name="email" placeholder="{{ request.user.email }}">
+            </div>
+            <button type="submit" class="btn btn-secondary">Send test</button>
+        </form>
+        <p class="text-xs text-muted" style="margin-top:6px;">Test uses your latest order + saved settings. Save first.</p>
+    </div>
+
+    <div class="card"><div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 class="card-title">Live preview</h3>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-preview">Refresh</button>
+        </div>
+        <iframe class="receipt-preview-frame" id="receipt-preview"></iframe>
+    </div></div>
+</div>
+
+<script>
+window.RECEIPT = { previewUrl: "{% url 'dashboard:receipt-preview' %}", csrf: "{{ csrf_token }}" };
+</script>
+<script src="{% static 'js/receipt_editor.js' %}"></script>
+{% endblock %}

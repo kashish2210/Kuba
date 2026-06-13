@@ -13,7 +13,7 @@
     <!-- Top bar -->
     <header class="pos-topbar">
         <div class="pos-logo">
-            {% if cafe.logo_svg %}<span class="pos-logo-svg">{{ cafe.logo_svg|safe }}</span>{% endif %}
+            <span class="pos-logo-svg">{% include "partials/cafe_logo.html" %}</span>
             <span class="pos-logo-text">{{ cafe.name }}</span>
         </div>
 

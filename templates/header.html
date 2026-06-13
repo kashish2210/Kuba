@@ -4,18 +4,7 @@
     <!-- Brand -->
     <div class="sidebar-brand">
         <div class="sidebar-brand-icon">
-            {% if cafe and cafe.logo_svg %}
-                {{ cafe.logo_svg|safe }}
-            {% else %}
-                <!-- Coffee cup icon -->
-                <svg viewBox="0 0 24 24">
-                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                    <line x1="6" y1="1" x2="6" y2="4"/>
-                    <line x1="10" y1="1" x2="10" y2="4"/>
-                    <line x1="14" y1="1" x2="14" y2="4"/>
-                </svg>
-            {% endif %}
+            {% include "partials/cafe_logo.html" %}
         </div>
         <div class="sidebar-brand-text">
             <span class="sidebar-brand-name">{{ cafe.name|default:"KUBA" }}</span>
@@ -84,7 +73,6 @@
                 <line x1="1" y1="10" x2="23" y2="10"/>
             </svg>
             Payment Methods
-            <span class="sidebar-badge">Soon</span>
         </a>
 
         <a href="{% url 'dashboard:coupons' %}" class="sidebar-link {% if request.resolver_match.url_name == 'coupons' %}active{% endif %}" id="nav-coupons">
@@ -96,7 +84,15 @@
                 <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
             </svg>
             Coupons &amp; Promos
-            <span class="sidebar-badge">Soon</span>
+        </a>
+
+        <a href="{% url 'dashboard:receipts' %}" class="sidebar-link {% if request.resolver_match.url_name == 'receipts' %}active{% endif %}" id="nav-receipts">
+            <svg viewBox="0 0 24 24">
+                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/>
+                <line x1="8" y1="7" x2="16" y2="7"/>
+                <line x1="8" y1="11" x2="16" y2="11"/>
+            </svg>
+            Receipts
         </a>
 
         <div class="sidebar-section-label">Kitchen</div>

@@ -17,6 +17,7 @@
                 <button class="product-card" data-id="{{ p.id }}" data-cat="{{ p.category_id }}"
                         data-name="{{ p.name|lower }}" style="--cat:{{ p.category.color }};">
                     <span class="pc-dot {% if p.is_active %}on{% else %}off{% endif %}"></span>
+                    {% if p.image %}<img class="pc-img" src="{{ p.image.url }}" alt="">{% endif %}
                     <span class="pc-name">{{ p.name }}</span>
                     <span class="pc-price">₹{{ p.price }}</span>
                 </button>
@@ -127,6 +128,7 @@
     <div class="pos-modal-card pos-modal-sm">
         <div class="pos-modal-head"><h3>Payment complete</h3></div>
         <div id="receipt-body"></div>
+        <button class="btn btn-secondary" id="btn-email-receipt" style="width:100%;margin-top:10px;">✉ Email receipt</button>
         <button class="pay-confirm" id="btn-new-order">New order</button>
     </div>
 </div>

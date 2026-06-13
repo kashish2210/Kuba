@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Receipt {{ order_number }}</title></head>
+<body style="margin:0;background:#f3efe8;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#2b2b2b;">
+<div style="max-width:460px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08);">
+
+    <div style="background:#2c1e0f;color:#fff;padding:26px 28px;text-align:center;">
+        <div style="width:48px;height:48px;margin:0 auto 8px;color:#e0a855;">{{ logo|safe }}</div>
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:.02em;">{{ cafe_name }}</div>
+        <div style="opacity:.7;font-size:.8rem;margin-top:2px;">Receipt {{ order_number }}</div>
+    </div>
+
+    <div style="padding:22px 28px;">
+        <table style="width:100%;font-size:13px;color:#666;margin-bottom:16px;">
+            <tr><td>Date</td><td style="text-align:right;color:#2b2b2b;">{{ date }}</td></tr>
+            <tr><td>Table</td><td style="text-align:right;color:#2b2b2b;">{{ table }}</td></tr>
+            <tr><td>Customer</td><td style="text-align:right;color:#2b2b2b;">{{ customer_name }}</td></tr>
+            <tr><td>Payment</td><td style="text-align:right;color:#2b2b2b;">{{ payment_method }}</td></tr>
+        </table>
+
+        <div style="border-top:1px dashed #ddd;border-bottom:1px dashed #ddd;padding:14px 0;">
+            {{ items_table|safe }}
+        </div>
+
+        <table style="width:100%;font-size:14px;margin-top:14px;">
+            <tr><td style="color:#666;">Subtotal</td><td style="text-align:right;">{{ subtotal }}</td></tr>
+            <tr><td style="color:#666;">Tax (GST)</td><td style="text-align:right;">{{ tax }}</td></tr>
+            <tr><td style="color:#666;">Discount</td><td style="text-align:right;">−{{ discount }}</td></tr>
+            <tr><td style="font-weight:800;font-size:1.15rem;padding-top:8px;">Total</td>
+                <td style="text-align:right;font-weight:800;font-size:1.15rem;padding-top:8px;color:#c8903e;">{{ total }}</td></tr>
+        </table>
+    </div>
+
+    <div style="background:#faf7f0;padding:18px 28px;text-align:center;font-size:12px;color:#999;">
+        Thank you for visiting {{ cafe_name }}! ☕<br>Powered by Kuba
+    </div>
+</div>
+</body>
+</html>

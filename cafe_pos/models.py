@@ -74,6 +74,7 @@ class Product(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     description = models.TextField(null=True, blank=True)
+    image = models.ImageField(upload_to="products/", null=True, blank=True)
     show_in_kds = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
 
@@ -304,3 +305,50 @@ class PaymentRecord(models.Model):
 
     def __str__(self):
         return f"Payment for {self.order.order_number}"
+
+
+class PaymentSettings(models.Model):
+    """Per-cafe payment gateway configuration (Razorpay / Stripe / UPI)."""
+
+    cafe = models.OneToOneField("tenants.Cafe", on_delete=models.CASCADE, related_name="payment_settings")
+
+    upi_id = models.CharField(max_length=100, blank=True, help_text="UPI VPA used for the POS QR, e.g. cafe@ybl")
+    upi_payee_name = models.CharField(max_length=100, blank=True, help_text="Name shown in the UPI app.")
+
+    razorpay_enabled = models.BooleanField(default=False)
+    razorpay_key_id = models.CharField(max_length=120, blank=True)
+    razorpay_key_secret = models.CharField(max_length=120, blank=True)
+
+    stripe_enabled = models.BooleanField(default=False)
+    stripe_publishable_key = models.CharField(max_length=160, blank=True)
+    stripe_secret_key = models.CharField(max_length=160, blank=True)
+
+    class Meta:
+        verbose_name = "Payment settings"
+        verbose_name_plural = "Payment settings"
+
+    def __str__(self):
+        return f"Payment settings — {self.cafe.name}"
+
+
+class ReceiptSettings(models.Model):
+    """Per-cafe receipt template + SMTP (falls back to the platform default)."""
+
+    cafe = models.OneToOneField("tenants.Cafe", on_delete=models.CASCADE, related_name="receipt_settings")
+    use_default = models.BooleanField(default=True, help_text="Use the built-in receipt design.")
+    template_html = models.TextField(blank=True, help_text="Custom receipt HTML with {{ data pills }}.")
+
+    smtp_use_default = models.BooleanField(default=True, help_text="Send via the platform's default email.")
+    smtp_host = models.CharField(max_length=120, blank=True)
+    smtp_port = models.PositiveIntegerField(default=587)
+    smtp_user = models.CharField(max_length=160, blank=True)
+    smtp_password = models.CharField(max_length=200, blank=True)
+    smtp_use_tls = models.BooleanField(default=True)
+    from_email = models.CharField(max_length=200, blank=True, help_text="e.g. Cafe <orders@cafe.com>")
+
+    class Meta:
+        verbose_name = "Receipt settings"
+        verbose_name_plural = "Receipt settings"
+
+    def __str__(self):
+        return f"Receipt settings — {self.cafe.name}"

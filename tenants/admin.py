@@ -15,10 +15,21 @@ class CafeChangeForm(forms.ModelForm):
         model = Cafe
         fields = [
             "name", "subdomain", "custom_domain", "logo_svg", "logo_image",
+            "theme_primary_color", "theme_primary_hover_color", "theme_accent_color",
+            "theme_sidebar_color", "theme_surface_color", "theme_surface_alt_color",
+            "theme_text_color", "theme_radius_px", "custom_css",
             "owner", "is_active",
         ]
         widgets = {
             "logo_svg": forms.Textarea(attrs={"rows": 6, "style": "font-family:monospace"}),
+            "theme_primary_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_primary_hover_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_accent_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_sidebar_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_surface_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_surface_alt_color": forms.TextInput(attrs={"type": "color"}),
+            "theme_text_color": forms.TextInput(attrs={"type": "color"}),
+            "custom_css": forms.Textarea(attrs={"rows": 10, "style": "font-family:monospace"}),
         }
 
     def clean_subdomain(self):
@@ -65,10 +76,17 @@ class CafeAdmin(admin.ModelAdmin):
                 }),
             )
         return (
-            ("Cafe", {"fields": ("name", "subdomain", "custom_domain", "is_active", "primary_url_display")}),
-            ("Branding", {"fields": ("logo_svg", "logo_image")}),
-            ("Ownership", {"fields": ("owner", "slug", "created_at")}),
-        )
+                ("Cafe", {"fields": ("name", "subdomain", "custom_domain", "is_active", "primary_url_display")}),
+                ("Branding", {"fields": ("logo_svg", "logo_image")}),
+                ("Theme", {
+                    "fields": (
+                        "theme_primary_color", "theme_primary_hover_color", "theme_accent_color",
+                        "theme_sidebar_color", "theme_surface_color", "theme_surface_alt_color",
+                        "theme_text_color", "theme_radius_px", "custom_css",
+                    ),
+                }),
+                ("Ownership", {"fields": ("owner", "slug", "created_at")}),
+            )
 
     # --- live availability endpoint ------------------------------------------
     def get_urls(self):
