@@ -242,9 +242,7 @@
       } else if (method === "upi") {
         box.innerHTML = '<img id="upi-qr" alt="UPI QR"><div style="text-align:center;color:#9a948c;font-size:.85rem;">Scan to pay ' + money(order.total) + "</div>";
         $("upi-qr").src = orderUrl("upi-qr/") + "?t=" + Date.now();
-      } else if (method === "card") {
-        box.innerHTML = '<input id="pay-input" placeholder="Transaction reference">';
-      } else if (method === "razorpay") {
+      } else if (method === "card" || method === "razorpay") {
         box.innerHTML = '<div style="text-align:center;color:#9a948c;font-size:.85rem;">Pay online via Razorpay</div>';
       }
     }
@@ -276,7 +274,7 @@
       if (!order || !order.lines.length) { toast("Cart is empty"); return; }
       if (!method) { toast("Select a payment method"); return; }
       
-      if (method === "razorpay") {
+      if (method === "razorpay" || method === "card") {
         api(orderUrl("razorpay/create/"), "POST", {}).then(function (data) {
           if (!window.POS.razorpayKeyId) {
             toast("Razorpay key missing");
@@ -309,7 +307,6 @@
       var body = { method_type: method };
       var inp = $("pay-input");
       if (method === "cash") body.amount_tendered = inp ? inp.value || 0 : 0;
-      if (method === "card") body.transaction_ref = inp ? inp.value : "";
       api(orderUrl("pay/"), "POST", body).then(showReceipt).catch(showErr);
     });
 

@@ -132,14 +132,10 @@ window.POS = {
         tables: "{% url 'pos:tables' %}",
         orderStart: "{% url 'pos:order-start' %}",
         orderRoot: "/pos/order/",
-<<<<<<< Updated upstream
-        ordersPage: "{% url 'pos:orders' %}",
-    }
-=======
+        ordersPage: "{% url 'pos:orders' %}"
     },
     razorpayKeyId: "{{ payment_settings.razorpay_key_id|default:''|escapejs }}",
-    cafeName: "{{ request.cafe.name|escapejs }}",
->>>>>>> Stashed changes
+    cafeName: "{{ request.cafe.name|escapejs }}"
 };
 </script>
 {% endblock %}
