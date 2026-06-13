@@ -153,7 +153,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    ('stock', BASE_DIR / 'stock'),  # Videos & screenshots for landing page
+]
+
 
 SITE_ID = 1
 
