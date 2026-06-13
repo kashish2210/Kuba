@@ -216,7 +216,10 @@ button { font-family: inherit; cursor: pointer; }
   .pay-methods {
     max-height: none;
     overflow: visible;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
+  .pay-method { flex: 1 1 calc(33% - 10px); justify-content: center; min-width: 80px; }
   .pos-search { max-width: 280px; }
   .pos-session-badge { display: none; }
   /* Panels should not clip their content */
@@ -238,10 +241,10 @@ button { font-family: inherit; cursor: pointer; }
   .pos-search { display: none; } /* hide desktop search on mobile */
   .pos-logo-text { font-size: 1rem; }
   .pos-session-badge { display: none; }
-  .pos-topbar-right { gap: 6px; }
-  .pos-pill { padding: 5px 8px; font-size: 0.78rem; gap: 4px; }
-  .pos-pill svg { width: 14px; height: 14px; }
-  .pos-user { width: 30px; height: 30px; font-size: 0.8rem; }
+  .pos-topbar-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pos-pill { padding: 5px 8px; font-size: 0.75rem; gap: 4px; white-space: nowrap; }
+  .pos-pill svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .pos-user { width: 30px; height: 30px; font-size: 0.8rem; flex-shrink: 0; }
 
   /* ── App layout ── */
   .pos-app { height: auto; overflow-y: auto; overflow-x: hidden; }
@@ -282,8 +285,8 @@ button { font-family: inherit; cursor: pointer; }
   .cart-line { grid-template-columns: 1fr auto auto auto; gap: 6px; padding: 6px; }
   .cl-name { font-size: 0.82rem; }
   .cl-total { min-width: 48px; font-size: 0.88rem; }
-  .cart-actions { flex-direction: row; }
-  .cart-actions button { padding: 8px; font-size: 0.8rem; }
+  .cart-actions { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .cart-actions button { padding: 8px; font-size: 0.8rem; flex: 1 1 calc(50% - 6px); min-width: max-content; }
   .cart-summary { padding: 8px 4px 10px; }
   .cs-total { font-size: 1rem; }
 
@@ -293,6 +296,7 @@ button { font-family: inherit; cursor: pointer; }
   .pay-amount-value { font-size: 1.8rem; }
   .keypad { grid-template-columns: repeat(5, 1fr); gap: 5px; }
   .keypad button { padding: 11px 0; font-size: 0.95rem; border-radius: 8px; }
+  .keypad .kp-act { font-size: 0.7rem; } /* Prevent text overflow on small screens */
   .pay-confirm { padding: 12px; font-size: 0.92rem; }
 
   /* ── Modals ── */
@@ -309,7 +313,10 @@ button { font-family: inherit; cursor: pointer; }
     padding: 16px;
   }
   .customer-list-container { max-height: 55vh; }
-  .cust-row-mid { padding: 0 8px; }
+  .cust-row { flex-wrap: wrap; gap: 8px; }
+  .cust-row-left { width: 100%; }
+  .cust-row-mid { padding: 0; width: 100%; }
+  .cust-row-right { width: 100%; justify-content: flex-start; }
   .cust-meta-item { font-size: 0.75rem; }
 
   /* ── UPI QR card ── */

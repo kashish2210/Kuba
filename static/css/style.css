@@ -771,6 +771,10 @@ img { display: block; max-width: 100%; }
     color: var(--text-primary);
 }
 
+.card-body {
+    overflow-x: auto;
+}
+
 .dash-form ul.errorlist {
     list-style: none;
     color: #c0392b;
@@ -1485,11 +1489,15 @@ img { display: block; max-width: 100%; }
     background: rgba(26, 18, 9, 0.5);
     z-index: 150;
     opacity: 0;
-    transition: opacity var(--duration) var(--ease-out);
+    visibility: hidden;
+    pointer-events: none;
+    transition: all var(--duration) var(--ease-out);
 }
 
 .sidebar-overlay.active {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
@@ -1521,6 +1529,8 @@ img { display: block; max-width: 100%; }
         order: -1;
     }
     .advanced-css-grid { grid-template-columns: 1fr; }
+
+    .split-layout { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 768px) {
@@ -1565,3 +1575,11 @@ img { display: block; max-width: 100%; }
 .text-right { text-align: right; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Split Layout */
+.split-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+}
