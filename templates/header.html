@@ -26,7 +26,8 @@
             Dashboard
         </a>
 
-        <a href="{% url 'pos:terminal' %}" class="sidebar-link" id="nav-pos" target="_blank">
+        <a href="{% url 'pos:terminal' %}" class="sidebar-link" id="nav-pos"
+           onclick="event.preventDefault(); openEmbedded('{% url 'pos:terminal' %}', 'POS Terminal');">
             <svg viewBox="0 0 24 24">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                 <line x1="8" y1="21" x2="16" y2="21"/>
@@ -86,6 +87,13 @@
             Coupons &amp; Promos
         </a>
 
+        <a href="{% url 'dashboard:loyalty' %}" class="sidebar-link {% if request.resolver_match.url_name == 'loyalty' %}active{% endif %}" id="nav-loyalty">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2l2.9 6 6.6.9-4.8 4.7 1.1 6.5L12 17l-5.8 3.1 1.1-6.5-4.8-4.7 6.6-.9L12 2z"/>
+            </svg>
+            Loyalty
+        </a>
+
         <a href="{% url 'dashboard:receipts' %}" class="sidebar-link {% if request.resolver_match.url_name == 'receipts' %}active{% endif %}" id="nav-receipts">
             <svg viewBox="0 0 24 24">
                 <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/>
@@ -97,7 +105,8 @@
 
         <div class="sidebar-section-label">Kitchen</div>
 
-        <a href="{% url 'pos:kds' %}" class="sidebar-link" id="nav-kds" target="_blank">
+        <a href="{% url 'pos:kds' %}" class="sidebar-link" id="nav-kds"
+           onclick="event.preventDefault(); openEmbedded('{% url 'pos:kds' %}', 'Kitchen Display');">
             <svg viewBox="0 0 24 24">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
                 <line x1="4" y1="22" x2="4" y2="15"/>
@@ -144,7 +153,6 @@
                 <line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
             Reports
-            <span class="sidebar-badge">Soon</span>
         </a>
     </nav>
 

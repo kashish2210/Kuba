@@ -69,6 +69,45 @@
         </div>
     </div>
 
+    <!-- ─── Embedded panel (iframe overlay for POS / KDS) ─── -->
+    <div id="embedded-panel" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;background:#000;">
+        <div id="embedded-bar" style="display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;background:var(--ink,#1a1209);color:#fff;flex-shrink:0;">
+            <button id="embedded-close" title="Back to dashboard"
+                    style="width:32px;height:32px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;"
+                    onclick="closeEmbedded()">&#8592;</button>
+            <span id="embedded-title" style="font-weight:700;font-size:.9rem;flex:1;"></span>
+            <a id="embedded-newtab" href="#" target="_blank"
+               style="font-size:.78rem;opacity:.7;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.25);padding:4px 10px;border-radius:6px;">
+                Open in new tab ↗
+            </a>
+        </div>
+        <iframe id="embedded-frame" src="" style="flex:1;border:none;width:100%;height:0;"></iframe>
+    </div>
+
+    <script>
+    function openEmbedded(url, title) {
+        var panel = document.getElementById('embedded-panel');
+        var frame = document.getElementById('embedded-frame');
+        var titleEl = document.getElementById('embedded-title');
+        var newTab = document.getElementById('embedded-newtab');
+        titleEl.textContent = title;
+        newTab.href = url;
+        frame.src = url;
+        panel.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeEmbedded() {
+        var panel = document.getElementById('embedded-panel');
+        var frame = document.getElementById('embedded-frame');
+        frame.src = '';
+        panel.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeEmbedded();
+    });
+    </script>
+
     <!-- Scroll Animation Observer -->
     <script>
     (function() {

@@ -34,6 +34,11 @@
   }
 
   function money(n) { return "₹" + Number(n).toFixed(2); }
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
+    });
+  }
 
   function toast(msg) {
     var t = document.createElement("div");
@@ -108,7 +113,8 @@
       var btnCust = $("btn-customer");
       if (btnCust) {
         if (order.customer) {
-          btnCust.innerHTML = '👤 ' + order.customer.name + ' <span class="cust-remove-cross" title="Remove customer">✕</span>';
+          var loyaltyLabel = order.customer.loyalty ? ' · L' + order.customer.loyalty.level : '';
+          btnCust.innerHTML = '👤 ' + esc(order.customer.name) + loyaltyLabel + ' <span class="cust-remove-cross" title="Remove customer">✕</span>';
           btnCust.classList.add("cust-assigned");
         } else {
           btnCust.innerHTML = '👤 Customer';
@@ -432,19 +438,35 @@
 
       list.forEach(function(c) {
         var row = document.createElement("div");
-        row.className = "cust-row";
+        row.className = "cust-row" + (c.is_banned ? " cust-row-banned" : "");
+        var loyalty = c.loyalty || { level: 0, points: 0, paid_orders: 0, next_level_orders: null };
+        var nextLevel = loyalty.next_level_orders
+          ? '<span class="cust-loyalty-next">Next at ' + loyalty.next_level_orders + '</span>'
+          : '<span class="cust-loyalty-next">Top level</span>';
+        var banHtml = c.is_banned
+          ? '<div class="cust-ban-note">Banned' + (c.ban_reason ? ': ' + esc(c.ban_reason) : '') + '</div>'
+          : '';
         
         var content = 
-          '<div class="cust-row-left">' + c.name + '</div>' +
+          '<div class="cust-row-left">' +
+            '<div>' + esc(c.name) + '</div>' +
+            '<div class="cust-loyalty-line">' +
+              '<span class="cust-level-badge level-' + loyalty.level + '">Level ' + loyalty.level + '</span>' +
+              '<span>' + loyalty.points + ' pts</span>' +
+              '<span>' + loyalty.paid_orders + ' orders</span>' +
+              nextLevel +
+            '</div>' +
+            banHtml +
+          '</div>' +
           '<div class="cust-row-mid">' +
             '<div class="cust-meta-item">' +
               '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
-              '<span>' + c.email + '</span>' +
+              '<span>' + esc(c.email) + '</span>' +
             '</div>' +
             (c.phone ? 
             '<div class="cust-meta-item">' +
               '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
-              '<span>' + c.phone + '</span>' +
+              '<span>' + esc(c.phone) + '</span>' +
             '</div>' : '') +
           '</div>' +
           '<div class="cust-row-right">' +
@@ -459,6 +481,10 @@
         // Click row to assign customer to order
         row.addEventListener("click", function(e) {
           if (e.target.closest(".cust-dots") || e.target.closest(".cust-actions-pop")) {
+            return;
+          }
+          if (c.is_banned) {
+            toast("This customer is banned");
             return;
           }
           api(orderUrl("customer/"), "POST", { customer_id: c.id }).then(function(newOrder) {
@@ -528,15 +554,39 @@
       var gridEl = $("floor-grid");
       gridEl.innerHTML = "";
       tables.forEach(function (t) {
-        var cell = document.createElement("button");
-        cell.className = "floor-table" + (t.occupied ? " occupied" : "");
-        cell.innerHTML = t.number + "<small>" + t.seats + " seats</small>";
-        cell.addEventListener("click", function () {
-          api(U.orderStart, "POST", { table: t.id, current_order: order ? order.id : null }).then(function (d) {
-            setOrder(d);
-            $("floor-modal").hidden = true;
-          }).catch(showErr);
-        });
+        var cell = document.createElement("div");
+        cell.className = "floor-table" + (t.locked ? " locked" : t.occupied ? " occupied" : "");
+        cell.title = t.locked ? "Table locked — guests still dining. Click to unlock." : t.occupied ? "Has active order" : "";
+
+        if (t.locked) {
+          cell.innerHTML =
+            t.number + "<small>" + t.seats + " seats</small>" +
+            "<button class=\"floor-unlock-btn\" title=\"Mark table as empty\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align: middle; margin-right: 3px;\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 9.9-1\"></path></svg> Unlock</button>";
+          cell.querySelector(".floor-unlock-btn").addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (!confirm("Mark Table " + t.number + " as empty and unlock it?")) return;
+            var url = U.tableRelease.replace("__pk__", t.id);
+            api(url, "POST", {}).then(function () {
+              toast("Table " + t.number + " unlocked");
+              openFloor();
+            }).catch(showErr);
+          });
+          cell.addEventListener("click", function () {
+            api(U.orderStart, "POST", { table: t.id, current_order: order ? order.id : null }).then(function (d) {
+              setOrder(d);
+              $("floor-modal").hidden = true;
+            }).catch(showErr);
+          });
+        } else {
+          cell.innerHTML = t.number + "<small>" + t.seats + " seats</small>";
+          cell.addEventListener("click", function () {
+            api(U.orderStart, "POST", { table: t.id, current_order: order ? order.id : null }).then(function (d) {
+              setOrder(d);
+              $("floor-modal").hidden = true;
+            }).catch(showErr);
+          });
+        }
+
         gridEl.appendChild(cell);
       });
     }

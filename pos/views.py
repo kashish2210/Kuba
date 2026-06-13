@@ -2,7 +2,7 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -15,19 +15,21 @@ from cafe_pos.models import (
     Floor,
     Order,
     OrderLineItem,
+    OrderReview,
     PaymentMethod,
     PaymentRecord,
     Product,
     ProductCategory,
     PaymentSettings,
     Coupon,
+    LoyaltySettings,
     Promotion,
 )
 from dashboard.mixins import cafe_admin_required, cafe_kds_required
 from tenants.utils import log_action
 
 from . import services
-from .kds import broadcast_order_to_kds, kds_group_name
+from .kds import broadcast_order_status, broadcast_order_to_kds, kds_group_name
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
@@ -104,7 +106,22 @@ def kds_display(request):
     return render(request, "pos/kds.html", {
         "is_admin": is_admin,
         "categories": list(cafe.product_categories.values("id", "name", "color")),
+        "kds_products": list(
+            Product.objects.filter(cafe=cafe, is_active=True, show_in_kds=True)
+            .values("id", "name")
+            .order_by("name")
+        ),
     })
+
+
+@cafe_admin_required(require_admin=False)
+@ensure_csrf_cookie
+def pds_display(request):
+    """Pickup Display Screen for announcing ready orders."""
+    cafe = request.cafe
+    profile = getattr(request.user, "profile", None)
+    is_admin = request.user.is_superuser or (profile and profile.role == "admin")
+    return render(request, "pos/pds.html", {"is_admin": is_admin})
 
 
 @cafe_admin_required(require_admin=False)
@@ -158,12 +175,37 @@ def tables(request):
                     "seats": t.seats,
                     "is_active": t.is_active,
                     "order_id": open_orders.get(t.id),
-                    "occupied": t.id in open_orders,
+                    "occupied": t.is_occupied or (t.id in open_orders),
+                    "locked": t.is_occupied,
                 }
                 for t in floor.tables.all() if t.is_active
             ],
         })
     return JsonResponse({"floors": data})
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def table_release(request, pk):
+    """Manually mark a table as empty (unlocks it after guests leave)."""
+    table = get_object_or_404(CafeTable, pk=pk, cafe=request.cafe)
+    wants_json = "application/json" in (request.content_type or "")
+    active = Order.objects.filter(cafe=request.cafe, table=table, status__in=EDITABLE_STATUSES).exists()
+    if active:
+        if wants_json:
+            return JsonResponse({"error": "There is still an open order on this table."}, status=400)
+        from django.contrib import messages
+        messages.error(request, f"Table {table.table_number} still has an open order. Complete or cancel it first.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+    table.is_occupied = False
+    table.save(update_fields=["is_occupied"])
+    log_action("update", cafe=request.cafe, request=request, target=table,
+               message=f"Marked table {table.table_number} as empty.")
+    if wants_json:
+        return JsonResponse({"ok": True, "table_id": pk})
+    from django.contrib import messages
+    messages.success(request, f"Table {table.table_number} marked as empty.")
+    return redirect(request.META.get("HTTP_REFERER", "/"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -219,6 +261,10 @@ def order_start(request):
                 status=Order.OrderStatus.DRAFT, order_number=services.next_order_number(cafe),
                 subtotal=0, tax_amount=0, discount_amount=0, total=0,
             )
+        # Lock the table so it shows as occupied even after payment
+        if not table.is_occupied:
+            table.is_occupied = True
+            table.save(update_fields=["is_occupied"])
     return JsonResponse(services.order_json(order))
 
 
@@ -276,6 +322,9 @@ def order_add_line(request, pk):
     line.line_total = line.unit_price * line.quantity - line.line_discount
     line.save()
     services.recalc_order(order)
+    if order.status in {Order.OrderStatus.SENT_TO_KITCHEN, Order.OrderStatus.READY, Order.OrderStatus.PAID}:
+        broadcast_order_to_kds(order, event_type="order_updated")
+        broadcast_order_status(order)
     return JsonResponse(services.order_json(order))
 
 
@@ -297,6 +346,9 @@ def order_update_line(request, pk, lid):
         line.line_total = line.unit_price * line.quantity - line.line_discount
         line.save()
     services.recalc_order(order)
+    if order.status in {Order.OrderStatus.SENT_TO_KITCHEN, Order.OrderStatus.READY, Order.OrderStatus.PAID}:
+        broadcast_order_to_kds(order, event_type="order_updated")
+        broadcast_order_status(order)
     return JsonResponse(services.order_json(order))
 
 
@@ -371,10 +423,13 @@ def order_customer(request, pk):
     if "customer_id" in data and not data.get("customer_id"):
         order.customer = None
         order.save(update_fields=["customer"])
+        broadcast_order_status(order)
         return JsonResponse(services.order_json(order))
         
     if data.get("customer_id"):
         customer = get_object_or_404(Customer, pk=data["customer_id"], cafe=cafe)
+        if customer.is_banned:
+            return JsonResponse({"error": "This customer is banned and cannot be assigned to orders."}, status=400)
     else:
         name = (data.get("name") or "").strip()
         if not name:
@@ -385,12 +440,15 @@ def order_customer(request, pk):
         customer = None
         if email:
             customer = Customer.objects.filter(cafe=cafe, email=email).first()
+            if customer and customer.is_banned:
+                return JsonResponse({"error": "This customer is banned and cannot be assigned to orders."}, status=400)
         if customer is None:
             customer = Customer.objects.create(
                 cafe=cafe, name=name, email=email, phone=(data.get("phone") or "").strip() or None
             )
     order.customer = customer
     order.save(update_fields=["customer"])
+    broadcast_order_status(order)
     return JsonResponse(services.order_json(order))
 
 
@@ -408,6 +466,7 @@ def order_send_kitchen(request, pk):
     log_action("update", cafe=request.cafe, request=request, target=order,
                message=f"Sent {order.order_number} to kitchen.")
     broadcast_order_to_kds(order, event_type="new_order")
+    broadcast_order_status(order)
     return JsonResponse(services.order_json(order))
 
 
@@ -421,6 +480,8 @@ def order_pay(request, pk):
         return JsonResponse({"error": "Cart is empty."}, status=400)
     if not order.customer_id or not order.customer.email:
         return JsonResponse({"error": "Customer name and email are mandatory for receipts."}, status=400)
+    if order.customer.is_banned:
+        return JsonResponse({"error": "This customer is banned and cannot be paid on an order."}, status=400)
 
     data = _data(request)
     method = data.get("method_type")
@@ -452,12 +513,13 @@ def order_pay(request, pk):
     log_action("other", cafe=request.cafe, request=request, target=order,
                message=f"Payment for {order.order_number}: {method} ₹{total}.")
     broadcast_order_to_kds(order, event_type="order_updated")
+    broadcast_order_status(order)
 
     # Auto-email the receipt to the customer if we have their address (best-effort).
     receipt_emailed = False
     if order.customer_id and order.customer.email:
         from cafe_pos.receipts import email_receipt
-        receipt_emailed = email_receipt(order, order.customer.email)
+        receipt_emailed = email_receipt(order, order.customer.email, request=request)
 
     return JsonResponse({
         "ok": True,
@@ -485,6 +547,8 @@ def order_razorpay_create(request, pk):
         return JsonResponse({"error": "Cart is empty."}, status=400)
     if not order.customer_id or not order.customer.email:
         return JsonResponse({"error": "Customer name and email are mandatory for receipts."}, status=400)
+    if order.customer.is_banned:
+        return JsonResponse({"error": "This customer is banned and cannot be paid on an order."}, status=400)
         
     settings_obj = PaymentSettings.objects.filter(cafe=request.cafe).first()
     if not settings_obj or not settings_obj.razorpay_enabled or not settings_obj.razorpay_key_id or not settings_obj.razorpay_key_secret:
@@ -514,6 +578,8 @@ def order_razorpay_verify(request, pk):
     order = _get_order(request, pk)
     if order.status == Order.OrderStatus.PAID:
         return JsonResponse({"error": "Order already paid."}, status=400)
+    if order.customer_id and order.customer.is_banned:
+        return JsonResponse({"error": "This customer is banned and cannot be paid on an order."}, status=400)
 
     data = _data(request)
     rzp_payment_id = data.get("razorpay_payment_id")
@@ -552,11 +618,13 @@ def order_razorpay_verify(request, pk):
 
     log_action("other", cafe=request.cafe, request=request, target=order,
                message=f"Payment for {order.order_number}: Razorpay ₹{order.total}.")
+    broadcast_order_to_kds(order, event_type="order_updated")
+    broadcast_order_status(order)
 
     receipt_emailed = False
     if order.customer_id and order.customer.email:
         from cafe_pos.receipts import email_receipt
-        receipt_emailed = email_receipt(order, order.customer.email)
+        receipt_emailed = email_receipt(order, order.customer.email, request=request)
 
     return JsonResponse({
         "ok": True,
@@ -582,7 +650,7 @@ def order_email_receipt(request, pk):
         to = order.customer.email or ""
     if not to:
         return JsonResponse({"error": "No email address to send to."}, status=400)
-    if email_receipt(order, to):
+    if email_receipt(order, to, request=request):
         return JsonResponse({"ok": True, "sent_to": to})
     return JsonResponse({"error": "Could not send the receipt (check SMTP settings)."}, status=500)
 
@@ -621,6 +689,7 @@ def order_cancel(request, pk):
     order.save(update_fields=["status"])
     log_action("delete", cafe=request.cafe, request=request, target=order,
                message=f"Cancelled order {order.order_number}.")
+    broadcast_order_status(order, event_type="order_removed")
     return JsonResponse({"ok": True, "order_number": order.order_number})
 
 
@@ -629,7 +698,10 @@ def customer_list(request):
     """JSON list of customers in this cafe. Supports search query 'q'."""
     cafe = request.cafe
     q = request.GET.get("q", "").strip().lower()
-    qs = Customer.objects.filter(cafe=cafe)
+    loyalty_settings, _ = LoyaltySettings.objects.get_or_create(cafe=cafe)
+    qs = Customer.objects.filter(cafe=cafe).annotate(
+        paid_orders=Count("orders", filter=Q(orders__status=Order.OrderStatus.PAID))
+    )
     if q:
         qs = qs.filter(
             Q(name__icontains=q) |
@@ -637,12 +709,18 @@ def customer_list(request):
             Q(phone__icontains=q)
         )
     qs = qs.order_by("name")[:100]
-    data = [{
-        "id": c.id,
-        "name": c.name,
-        "email": c.email or "",
-        "phone": c.phone or "",
-    } for c in qs]
+    data = []
+    for c in qs:
+        loyalty = c.loyalty_snapshot(settings_obj=loyalty_settings, paid_orders=c.paid_orders)
+        data.append({
+            "id": c.id,
+            "name": c.name,
+            "email": c.email or "",
+            "phone": c.phone or "",
+            "is_banned": c.is_banned,
+            "ban_reason": c.ban_reason,
+            "loyalty": loyalty,
+        })
     return JsonResponse({"customers": data})
 
 
@@ -679,11 +757,16 @@ def customer_create_update(request, pk=None):
             cafe=cafe, name=name, email=email, phone=phone
         )
         
+    loyalty_settings, _ = LoyaltySettings.objects.get_or_create(cafe=cafe)
+    loyalty = customer.loyalty_snapshot(settings_obj=loyalty_settings)
     return JsonResponse({
         "id": customer.id,
         "name": customer.name,
         "email": customer.email or "",
         "phone": customer.phone or "",
+        "is_banned": customer.is_banned,
+        "ban_reason": customer.ban_reason,
+        "loyalty": loyalty,
     })
 
 
@@ -694,6 +777,60 @@ def customer_delete(request, pk):
     customer = get_object_or_404(Customer, pk=pk, cafe=request.cafe)
     customer.delete()
     return JsonResponse({"ok": True})
+
+
+def order_review(request, token):
+    order = get_object_or_404(
+        Order.objects.select_related("cafe", "customer", "employee").prefetch_related("line_items__prepared_by"),
+        review_token=token,
+    )
+    existing = getattr(order, "review", None)
+    return render(request, "pos/review.html", {"order": order, "existing_review": existing})
+
+
+@require_POST
+def order_review_submit(request, token):
+    order = get_object_or_404(
+        Order.objects.select_related("cafe", "customer", "employee").prefetch_related("line_items__prepared_by"),
+        review_token=token,
+    )
+    try:
+        rating = int(request.POST.get("rating"))
+    except (TypeError, ValueError):
+        rating = 0
+    if rating < 1 or rating > 5:
+        return render(request, "pos/review.html", {
+            "order": order,
+            "error": "Please select a rating from 1 to 5.",
+        }, status=400)
+
+    review, created = OrderReview.objects.get_or_create(
+        order=order,
+        defaults={
+            "cafe": order.cafe,
+            "customer": order.customer,
+            "cashier": order.employee,
+            "customer_name": order.customer.name if order.customer_id else "",
+            "customer_email": order.customer.email if order.customer_id else "",
+        },
+    )
+    if not created:
+        return render(request, "pos/review.html", {"order": order, "existing_review": review})
+
+    review.rating = rating
+    review.comment = (request.POST.get("comment") or "").strip()
+    review.save(update_fields=["rating", "comment"])
+    staff_ids = {
+        line.prepared_by_id
+        for line in order.line_items.all()
+        if line.prepared_by_id
+    }
+    if staff_ids:
+        review.kitchen_staff.set(staff_ids)
+    return render(request, "pos/review_thanks.html", {"order": order, "review": review})
+
+
+@cafe_kds_required
 @require_POST
 def kds_update_line_status(request, pk, lid):
     order = _get_order(request, pk)
@@ -703,13 +840,18 @@ def kds_update_line_status(request, pk, lid):
     
     if new_status in {s.value for s in OrderLineItem.KDSStatus}:
         line.kds_status = new_status
-        line.save(update_fields=["kds_status"])
+        update_fields = ["kds_status"]
+        if new_status == OrderLineItem.KDSStatus.COMPLETED and request.user.is_authenticated:
+            line.prepared_by = request.user
+            update_fields.append("prepared_by")
+        line.save(update_fields=update_fields)
         
         all_completed = not order.line_items.exclude(kds_status=OrderLineItem.KDSStatus.COMPLETED).exists()
         if all_completed:
             if order.status == Order.OrderStatus.SENT_TO_KITCHEN:
                 order.status = Order.OrderStatus.READY
                 order.save(update_fields=["status"])
+                broadcast_order_status(order)
             
             channel_layer = get_channel_layer()
             if channel_layer:
@@ -724,6 +866,7 @@ def kds_update_line_status(request, pk, lid):
             return JsonResponse({"ok": True, "kds_status": new_status, "order_status": order.status})
 
         broadcast_order_to_kds(order, event_type="order_updated")
+        broadcast_order_status(order)
         return JsonResponse({"ok": True, "kds_status": new_status})
     
     return JsonResponse({"error": "Invalid status."}, status=400)

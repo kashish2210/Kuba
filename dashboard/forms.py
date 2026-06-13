@@ -6,6 +6,8 @@ from cafe_pos.models import (
     CafeTable,
     Coupon,
     Floor,
+    Customer,
+    LoyaltySettings,
     PaymentMethod,
     PaymentSettings,
     Product,
@@ -126,6 +128,62 @@ class PromotionForm(StyledFormMixin, forms.ModelForm):
             cd["product"] = None
             cd["min_quantity"] = None
         return cd
+
+
+class LoyaltySettingsForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = LoyaltySettings
+        fields = [
+            "level_1_orders",
+            "level_2_orders",
+            "level_3_orders",
+            "level_4_orders",
+            "level_5_orders",
+            "points_per_order",
+        ]
+        widgets = {
+            "level_1_orders": forms.NumberInput(attrs={"min": "1"}),
+            "level_2_orders": forms.NumberInput(attrs={"min": "1"}),
+            "level_3_orders": forms.NumberInput(attrs={"min": "1"}),
+            "level_4_orders": forms.NumberInput(attrs={"min": "1"}),
+            "level_5_orders": forms.NumberInput(attrs={"min": "1"}),
+            "points_per_order": forms.NumberInput(attrs={"min": "0"}),
+        }
+        labels = {
+            "level_1_orders": "Level 1 orders",
+            "level_2_orders": "Level 2 orders",
+            "level_3_orders": "Level 3 orders",
+            "level_4_orders": "Level 4 orders",
+            "level_5_orders": "Level 5 orders",
+            "points_per_order": "Points per paid order",
+        }
+
+    def clean(self):
+        cd = super().clean()
+        values = [cd.get(f"level_{i}_orders") for i in range(1, 6)]
+        if all(v is not None for v in values) and values != sorted(values):
+            raise forms.ValidationError("Loyalty order thresholds must go from lowest to highest.")
+        return cd
+
+
+class CustomerLoyaltyForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Customer
+        fields = ["manual_loyalty_level", "is_banned", "ban_reason"]
+        widgets = {
+            "manual_loyalty_level": forms.NumberInput(attrs={"min": "1", "max": "5"}),
+            "ban_reason": forms.TextInput(attrs={"placeholder": "Optional reason shown to staff"}),
+        }
+        labels = {
+            "manual_loyalty_level": "Manual level override",
+            "is_banned": "Ban customer",
+            "ban_reason": "Ban reason",
+        }
+
+    def clean_ban_reason(self):
+        if not self.cleaned_data.get("is_banned"):
+            return ""
+        return self.cleaned_data.get("ban_reason", "").strip()
 
 
 class EmployeeForm(StyledFormMixin, forms.Form):

@@ -42,8 +42,8 @@
         </button>
 
         <div class="cart-actions">
-            <button id="btn-customer">👤 Customer</button>
-            <button id="btn-discount">％ Discount</button>
+            <button id="btn-customer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Customer</button>
+            <button id="btn-discount"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg> Discount</button>
         </div>
 
         <div class="cart-summary">
@@ -85,7 +85,7 @@
             <button class="kp-act" data-act="prices">Prices</button>
             <button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button>
             <button class="kp-act" data-act="disc">Disc.</button>
-            <button data-key="9">9</button><button data-key="0">0</button><button data-key="." >.</button><button class="kp-clear" data-act="clear">⌫</button>
+            <button data-key="9">9</button><button data-key="0">0</button><button data-key="." >.</button><button class="kp-clear" data-act="clear"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg></button>
             <button class="kp-act" data-act="qty">Qty</button>
         </div>
 
@@ -98,7 +98,7 @@
     <div class="pos-modal-card">
         <div class="pos-modal-head">
             <h3>Choose a table</h3>
-            <button class="pos-modal-close" id="floor-close">✕</button>
+            <button class="pos-modal-close" id="floor-close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
         <div class="floor-tabs" id="floor-tabs"></div>
         <div class="floor-grid" id="floor-grid"></div>
@@ -108,7 +108,7 @@
 <!-- Generic prompt modal (customer / discount) -->
 <div class="pos-modal" id="prompt-modal" hidden>
     <div class="pos-modal-card pos-modal-sm">
-        <div class="pos-modal-head"><h3 id="prompt-title">…</h3><button class="pos-modal-close" id="prompt-close">✕</button></div>
+        <div class="pos-modal-head"><h3 id="prompt-title">…</h3><button class="pos-modal-close" id="prompt-close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
         <div id="prompt-body"></div>
     </div>
 </div>
@@ -135,7 +135,7 @@
                     </svg>
                 </div>
                 
-                <button class="pos-modal-close" id="cust-modal-close">✕</button>
+                <button class="pos-modal-close" id="cust-modal-close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
             
             <div class="customer-list-container" id="customer-list-container">
@@ -147,7 +147,7 @@
         <div id="customer-form-view" hidden>
             <div class="customer-form-head">
                 <h3 id="cust-form-title">Edit Customer</h3>
-                <button class="cust-form-close" id="cust-form-close">✕</button>
+                <button class="cust-form-close" id="cust-form-close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
             <div class="customer-form-body">
                 <input type="hidden" id="cust-edit-id">
@@ -197,8 +197,8 @@
         <div class="upi-confirm-body">
             <p class="upi-confirm-msg">Has the customer completed the UPI payment?</p>
             <div class="upi-confirm-actions">
-                <button class="upi-confirm-btn upi-confirm-btn-no" id="upi-confirm-no">✕ Not yet</button>
-                <button class="upi-confirm-btn upi-confirm-btn-yes" id="upi-confirm-yes">✔ Yes, Paid</button>
+                <button class="upi-confirm-btn upi-confirm-btn-no" id="upi-confirm-no"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Not yet</button>
+                <button class="upi-confirm-btn upi-confirm-btn-yes" id="upi-confirm-yes"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Yes, Paid</button>
             </div>
         </div>
     </div>
@@ -209,7 +209,7 @@
     <div class="pos-modal-card pos-modal-sm">
         <div class="pos-modal-head"><h3>Payment complete</h3></div>
         <div id="receipt-body"></div>
-        <button class="btn btn-secondary" id="btn-email-receipt" style="width:100%;margin-top:10px;">✉ Email receipt</button>
+        <button class="btn btn-secondary" id="btn-email-receipt" style="width:100%;margin-top:10px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Email receipt</button>
         <button class="pay-confirm" id="btn-new-order">New order</button>
     </div>
 </div>
@@ -220,6 +220,7 @@ window.POS = {
     urls: {
         tables: "{% url 'pos:tables' %}",
         orderStart: "{% url 'pos:order-start' %}",
+        tableRelease: "/pos/tables/__pk__/release/",
         orderRoot: "/pos/order/",
         ordersPage: "{% url 'pos:orders' %}"
     },

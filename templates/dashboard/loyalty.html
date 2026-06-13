@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Loyalty — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Loyalty{% endblock %}
+
+{% block extra_css %}
+<style>
+.loy-grid { display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+.loy-thresholds { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.loy-level-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:800; background:#dbeafe; color:#1e40af; white-space:nowrap; }
+.loy-level-badge.level-0 { background:var(--disabled); color:#333; }
+.loy-level-badge.level-4, .loy-level-badge.level-5 { background:#fef3c7; color:#92400e; }
+.loy-muted { color:var(--muted); font-size:.8rem; }
+.loy-customer-form { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.loy-customer-form .form-input { width:76px; padding:6px 8px; }
+.loy-customer-form input[name="ban_reason"] { width:180px; }
+.loy-ban-label { display:inline-flex; align-items:center; gap:6px; font-size:.8rem; font-weight:700; color:var(--muted); }
+@media (max-width: 1100px) { .loy-grid { grid-template-columns:1fr; } .loy-customer-form { justify-content:flex-start; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Loyalty</h1>
+    <p class="text-muted">Rank customers by paid order count, tune level thresholds, and block problem customers from POS orders.</p>
+</div>
+
+<div class="loy-grid">
+    <div class="card"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">Level rules</h3>
+        <form method="post" action="{% url 'dashboard:loyalty-settings' %}" class="dash-form">
+            {% csrf_token %}
+            <div class="loy-thresholds">
+                {% for field in settings_form %}
+                    <div class="form-group">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ field.errors|striptags }}</div>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            {% if settings_form.non_field_errors %}
+                <div class="text-xs" style="color:#c0392b;margin:4px 0 10px;">{{ settings_form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Save rules</button>
+        </form>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        {% if customer_rows %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Orders</th>
+                    <th>Points</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th class="text-right">Admin controls</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in customer_rows %}
+                <tr>
+                    <td>
+                        <strong>{{ row.customer.name }}</strong>
+                        <div class="loy-muted">{{ row.customer.email|default:"No email" }}{% if row.customer.phone %} · {{ row.customer.phone }}{% endif %}</div>
+                    </td>
+                    <td>{{ row.loyalty.paid_orders }}</td>
+                    <td>{{ row.loyalty.points }}</td>
+                    <td>
+                        <span class="loy-level-badge level-{{ row.loyalty.level }}">Level {{ row.loyalty.level }}</span>
+                        {% if row.loyalty.manual_level %}
+                            <div class="loy-muted">manual override</div>
+                        {% elif row.loyalty.next_level_orders %}
+                            <div class="loy-muted">{{ row.loyalty.next_level_orders }} orders for next</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.customer.is_banned %}
+                            <span class="badge badge-danger">Banned</span>
+                            {% if row.customer.ban_reason %}<div class="loy-muted">{{ row.customer.ban_reason }}</div>{% endif %}
+                        {% else %}
+                            <span class="badge badge-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <form method="post" action="{% url 'dashboard:customer-loyalty' row.customer.id %}" class="loy-customer-form">
+                            {% csrf_token %}
+                            {{ row.form.manual_loyalty_level }}
+                            <label class="loy-ban-label">{{ row.form.is_banned }} Ban</label>
+                            {{ row.form.ban_reason }}
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="empty-state-title">No customers yet</h3>
+            <p class="empty-state-desc">Customers created in the POS will appear here.</p>
+        </div>
+        {% endif %}
+    </div></div>
+</div>
+{% endblock %}

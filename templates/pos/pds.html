@@ -1,0 +1,126 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Pickup Display — {{ cafe.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="{% static 'css/pos.css' %}"/>
+    {% if cafe %}<style id="cafe-theme-css">{{ cafe.active_theme_css|safe }}</style>{% endif %}
+<style>
+html,body{height:100%;margin:0;font-family:Inter,sans-serif;background:var(--bg,#faf7f0);color:var(--ink,#1a1209);overflow:hidden;}
+.pds-app{height:100vh;display:flex;flex-direction:column;}
+.pds-head{height:64px;display:flex;align-items:center;gap:14px;padding:0 24px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#e2ddd4);}
+.pds-logo{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--primary,#c8903e);color:#fff;overflow:hidden;}
+.pds-title{font-size:1.25rem;font-weight:900;}
+.pds-sub{font-size:.8rem;color:var(--muted,#777);font-weight:700;}
+.pds-status{margin-left:auto;padding:6px 12px;border-radius:999px;background:#fbeaea;color:#b91c1c;font-size:.78rem;font-weight:800;}
+.pds-status.live{background:#e7f6ec;color:#15803d;}
+.pds-body{flex:1;display:grid;grid-template-columns:1.15fr .85fr;gap:18px;padding:18px;min-height:0;}
+.pds-panel{background:var(--panel,#fff);border:1px solid var(--line,#e2ddd4);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
+.pds-panel h2{font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted,#777);padding:16px 18px;border-bottom:1px solid var(--line,#e2ddd4);margin:0;}
+.pds-ready-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;padding:18px;overflow:auto;}
+.pds-ready-card{border:2px solid #22c55e;background:#ecfdf5;color:#065f46;border-radius:16px;padding:18px;min-height:132px;display:flex;flex-direction:column;justify-content:center;text-align:center;}
+.pds-order-no{font-size:2.6rem;font-weight:900;line-height:1;}
+.pds-meta{font-size:.88rem;font-weight:800;margin-top:8px;color:#047857;}
+.pds-preparing-list{padding:12px 18px;overflow:auto;display:flex;flex-direction:column;gap:10px;}
+.pds-prep-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px;border-radius:12px;background:var(--soft,#f4f5f7);border:1px solid var(--line,#e2ddd4);}
+.pds-prep-no{font-size:1.25rem;font-weight:900;color:var(--ink,#1a1209);}
+.pds-progress{font-size:.82rem;font-weight:800;color:var(--muted,#777);}
+.pds-empty{padding:40px 20px;text-align:center;color:var(--muted,#777);font-weight:800;}
+.pds-callout{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;border-radius:14px;padding:14px 22px;font-weight:900;box-shadow:0 14px 40px rgba(0,0,0,.24);opacity:0;pointer-events:none;transition:.2s;}
+.pds-callout.show{opacity:1;bottom:34px;}
+@media(max-width:800px){.pds-body{grid-template-columns:1fr;overflow:auto}.pds-app{height:auto;min-height:100vh;overflow:auto}}
+</style>
+</head>
+<body>
+<div class="pds-app">
+    <header class="pds-head">
+        <div class="pds-logo">{% include "partials/cafe_logo.html" %}</div>
+        <div>
+            <div class="pds-title">{{ cafe.name }}</div>
+            <div class="pds-sub">Pickup Display</div>
+        </div>
+        <span class="pds-status" id="pds-conn">Connecting</span>
+    </header>
+    <main class="pds-body">
+        <section class="pds-panel">
+            <h2>Ready to collect</h2>
+            <div class="pds-ready-grid" id="ready-list"></div>
+        </section>
+        <section class="pds-panel">
+            <h2>Preparing</h2>
+            <div class="pds-preparing-list" id="prep-list"></div>
+        </section>
+    </main>
+</div>
+<div class="pds-callout" id="pds-callout"></div>
+<script>
+(function(){
+    var orders = new Map();
+    var announced = new Set();
+    var readyEl = document.getElementById("ready-list");
+    var prepEl = document.getElementById("prep-list");
+    var conn = document.getElementById("pds-conn");
+    var callout = document.getElementById("pds-callout");
+    var retryMs = 1000;
+
+    function esc(value){return String(value == null ? "" : value).replace(/[&<>"']/g,function(ch){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch];});}
+    function shortNo(o){return String(o.order_number || "").replace(/^ORD-0*/,"#");}
+    function setConn(text, live){conn.textContent=text;conn.className="pds-status"+(live?" live":"");}
+    function speak(o){
+        var text = "Order " + shortNo(o).replace("#","") + " is ready. Please collect your order or ask your waiter to deliver it.";
+        callout.textContent = text;
+        callout.classList.add("show");
+        setTimeout(function(){callout.classList.remove("show");}, 4500);
+        if ("speechSynthesis" in window) {
+            var utter = new SpeechSynthesisUtterance(text);
+            utter.rate = 0.92;
+            window.speechSynthesis.speak(utter);
+        }
+    }
+    function upsert(o){
+        if (!o || !o.id) return;
+        var prev = orders.get(String(o.id));
+        orders.set(String(o.id), o);
+        if (o.display_status === "ready" && (!prev || prev.display_status !== "ready") && !announced.has(String(o.id))) {
+            announced.add(String(o.id));
+            speak(o);
+        }
+    }
+    function render(){
+        var list = Array.from(orders.values()).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+        var ready = list.filter(function(o){return o.display_status === "ready";}).slice(0, 12);
+        var prep = list.filter(function(o){return o.display_status === "preparing";}).slice(0, 24);
+        readyEl.innerHTML = ready.length ? ready.map(function(o){
+            return '<article class="pds-ready-card"><div class="pds-order-no">'+esc(shortNo(o))+'</div><div class="pds-meta">'+(o.table_number?'Table '+esc(o.table_number):esc(o.customer_name || 'Pickup'))+'</div></article>';
+        }).join("") : '<div class="pds-empty">No ready orders yet.</div>';
+        prepEl.innerHTML = prep.length ? prep.map(function(o){
+            return '<div class="pds-prep-row"><div><div class="pds-prep-no">'+esc(shortNo(o))+'</div><div class="pds-progress">'+esc(o.customer_name || (o.table_number ? "Table "+o.table_number : "Preparing"))+'</div></div><div class="pds-progress">'+o.completed_lines+'/'+o.total_lines+'</div></div>';
+        }).join("") : '<div class="pds-empty">Nothing preparing right now.</div>';
+    }
+    function connect(){
+        var scheme = location.protocol === "https:" ? "wss" : "ws";
+        var ws = new WebSocket(scheme + "://" + location.host + "/ws/orders/");
+        ws.onopen = function(){retryMs=1000;setConn("Live", true);};
+        ws.onmessage = function(e){
+            var msg = JSON.parse(e.data);
+            if (msg.event === "snapshot") {
+                orders.clear();
+                (msg.orders || []).forEach(upsert);
+            } else if (msg.event === "order_removed" && msg.order) {
+                orders.delete(String(msg.order.id));
+            } else if (msg.order) {
+                upsert(msg.order);
+            }
+            render();
+        };
+        ws.onclose = function(){setConn("Reconnecting", false);setTimeout(connect,retryMs);retryMs=Math.min(retryMs*2,30000);};
+        ws.onerror = function(){ws.close();};
+    }
+    connect();
+})();
+</script>
+</body>
+</html>

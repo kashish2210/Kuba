@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template import Context, Template
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
@@ -21,6 +22,7 @@ DATA_PILLS = [
     ("discount", "Discount"),
     ("total", "Total"),
     ("items_table", "Items table"),
+    ("review_url", "Review link"),
     ("logo", "Logo"),
 ]
 
@@ -29,7 +31,7 @@ def _money(value):
     return f"₹{Decimal(value or 0):.2f}"
 
 
-def order_context(order):
+def order_context(order, request=None):
     cafe = order.cafe
     lines = list(order.line_items.select_related("product").all())
     rows = "".join(
@@ -47,6 +49,11 @@ def order_context(order):
         f"<tbody>{rows}</tbody></table>"
     )
     method = getattr(getattr(order, "payment_record", None), "method_type", "") or ""
+    review_path = reverse("pos:order-review", args=[order.review_token])
+    if request is not None:
+        review_url = request.build_absolute_uri(review_path)
+    else:
+        review_url = order.cafe.dashboard_url().rstrip("/") + review_path
     return {
         "order_number": order.order_number,
         "cafe_name": cafe.name,
@@ -60,18 +67,19 @@ def order_context(order):
         "total": _money(order.total),
         "items": lines,
         "items_table": items_table,
+        "review_url": review_url,
         "logo": cafe.logo_svg or "",
         "cafe": cafe,
         "order": order,
     }
 
 
-def render_receipt(order):
+def render_receipt(order, request=None):
     """Custom cafe HTML (with data pills) if set, else the built-in default design."""
     from .models import ReceiptSettings
 
     rs = ReceiptSettings.objects.filter(cafe=order.cafe).first()
-    ctx = order_context(order)
+    ctx = order_context(order, request=request)
     if rs and not rs.use_default and rs.template_html.strip():
         ctx["items_table"] = mark_safe(ctx["items_table"])
         ctx["logo"] = mark_safe(ctx["logo"])
@@ -98,12 +106,12 @@ def _cafe_connection(cafe):
     return get_connection(), settings.DEFAULT_FROM_EMAIL
 
 
-def email_receipt(order, to_email):
+def email_receipt(order, to_email, request=None):
     """Send the rendered receipt. Returns True on success; never raises to the caller."""
     if not to_email:
         return False
     try:
-        html = render_receipt(order)
+        html = render_receipt(order, request=request)
         connection, from_email = _cafe_connection(order.cafe)
         subject = f"Your receipt {order.order_number} — {order.cafe.name}"
         msg = EmailMultiAlternatives(

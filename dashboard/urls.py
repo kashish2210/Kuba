@@ -45,6 +45,11 @@ urlpatterns = [
     path("promotions/<int:pk>/delete/", views.promotion_delete, name="promotion-delete"),
     path("promotions/<int:pk>/toggle/", views.promotion_toggle, name="promotion-toggle"),
 
+    # Loyalty & customers
+    path("loyalty/", views.loyalty, name="loyalty"),
+    path("loyalty/settings/", views.loyalty_settings_update, name="loyalty-settings"),
+    path("loyalty/customers/<int:pk>/", views.customer_loyalty_update, name="customer-loyalty"),
+
     # Payment settings
     path("payment-methods/", views.payment_settings, name="payment-methods"),
 
@@ -60,6 +65,7 @@ urlpatterns = [
     # Deferred POS modules
     path("pos/", views.coming_soon, name="pos-session"),
     path("kds/", views.kds_display, name="kds"),
-    path("reports/", views.coming_soon, name="reports"),
+    path("reports/", views.reports, name="reports"),
+    path("reports/export/", views.reports_export, name="reports-export"),
     path("bookings/", views.coming_soon, name="bookings"),
 ]

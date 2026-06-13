@@ -1,7 +1,7 @@
 """Pure helpers for POS: payment defaults, order numbering, totals, serialisation."""
 from decimal import ROUND_HALF_UP, Decimal
 
-from cafe_pos.models import Order, PaymentMethod, POSSession
+from cafe_pos.models import LoyaltySettings, Order, PaymentMethod, POSSession
 
 CENTS = Decimal("0.01")
 DEFAULT_METHODS = [("cash", True), ("card", False), ("upi", False)]
@@ -83,11 +83,16 @@ def order_json(order):
         })
     customer = None
     if order.customer_id:
+        loyalty_settings, _ = LoyaltySettings.objects.get_or_create(cafe=order.cafe)
+        loyalty = order.customer.loyalty_snapshot(settings_obj=loyalty_settings)
         customer = {
             "id": order.customer_id,
             "name": order.customer.name,
             "phone": order.customer.phone or "",
             "email": order.customer.email or "",
+            "is_banned": order.customer.is_banned,
+            "ban_reason": order.customer.ban_reason,
+            "loyalty": loyalty,
         }
     return {
         "id": order.id,

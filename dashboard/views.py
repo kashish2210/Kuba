@@ -1,21 +1,25 @@
 import json
+import datetime
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
-import json
-
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Count, Max, Q, Sum, Avg
+from django.db.models.functions import TruncDate, TruncHour
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from cafe_pos.models import (
     CafeTable,
     Coupon,
+    Customer,
     Floor,
+    LoyaltySettings,
     Order,
     PaymentMethod,
     PaymentSettings,
@@ -34,6 +38,8 @@ from .forms import (
     CouponForm,
     EmployeeForm,
     FloorForm,
+    CustomerLoyaltyForm,
+    LoyaltySettingsForm,
     PaymentSettingsForm,
     ProductForm,
     PromotionForm,
@@ -59,10 +65,6 @@ def home(request):
     if getattr(request, "is_admin_host", False):
         return redirect("/admin/")
     if getattr(request, "cafe", None) is None:
-        if request.user.is_authenticated:
-            cafe = _user_cafe(request.user)
-            if cafe is not None:
-                return redirect(cafe.dashboard_url(request))
         return render(request, "landing.html")
     # Cashiers go straight to the POS terminal; admins/superusers get the admin panel.
     if request.user.is_authenticated and not request.user.is_superuser:
@@ -103,8 +105,16 @@ def floors(request):
         active_floor = floor_list[0]
 
     tables = []
+    occupied_table_ids = set()
     if active_floor is not None:
         tables = list(CafeTable.objects.filter(floor=active_floor))
+        from cafe_pos.models import Order as _Order
+        occupied_table_ids = set(
+            _Order.objects.filter(
+                cafe=cafe, table__floor=active_floor,
+                status__in=["draft", "sent_to_kitchen", "ready"]
+            ).values_list("table_id", flat=True)
+        )
 
     edit_table = None
     edit_table_id = request.GET.get("edit_table")
@@ -115,6 +125,7 @@ def floors(request):
         "floors": floor_list,
         "active_floor": active_floor,
         "tables": tables,
+        "occupied_table_ids": occupied_table_ids,
         "edit_floor": request.GET.get("edit_floor") == "1",
         "edit_table": edit_table,
         "floor_form": FloorForm(instance=active_floor if request.GET.get("edit_floor") == "1" else None),
@@ -680,6 +691,65 @@ def promotion_toggle(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Loyalty & customer ranking
+# ─────────────────────────────────────────────────────────────────────────────
+@cafe_admin_required
+def loyalty(request):
+    cafe = request.cafe
+    settings_obj, _ = LoyaltySettings.objects.get_or_create(cafe=cafe)
+    settings_form = LoyaltySettingsForm(instance=settings_obj)
+    customers = (
+        Customer.objects.filter(cafe=cafe)
+        .annotate(paid_orders=Count("orders", filter=Q(orders__status=Order.OrderStatus.PAID)))
+        .order_by("-paid_orders", "name")
+    )
+    rows = [
+        {
+            "customer": customer,
+            "loyalty": customer.loyalty_snapshot(settings_obj=settings_obj, paid_orders=customer.paid_orders),
+            "form": CustomerLoyaltyForm(instance=customer),
+        }
+        for customer in customers
+    ]
+    return render(request, "dashboard/loyalty.html", {
+        "settings_form": settings_form,
+        "settings": settings_obj,
+        "customer_rows": rows,
+    })
+
+
+@cafe_admin_required
+@require_POST
+def loyalty_settings_update(request):
+    settings_obj, _ = LoyaltySettings.objects.get_or_create(cafe=request.cafe)
+    form = LoyaltySettingsForm(request.POST, instance=settings_obj)
+    if form.is_valid():
+        form.save()
+        log_action("update", cafe=request.cafe, request=request, target=settings_obj,
+                   message="Updated loyalty settings.")
+        messages.success(request, "Loyalty settings saved.")
+    else:
+        messages.error(request, "Could not save loyalty settings: " + "; ".join(
+            f"{k}: {', '.join(v)}" for k, v in form.errors.items()))
+    return redirect("dashboard:loyalty")
+
+
+@cafe_admin_required
+@require_POST
+def customer_loyalty_update(request, pk):
+    customer = get_object_or_404(Customer, pk=pk, cafe=request.cafe)
+    form = CustomerLoyaltyForm(request.POST, instance=customer)
+    if form.is_valid():
+        form.save()
+        log_action("update", cafe=request.cafe, request=request, target=customer,
+                   message=f"Updated loyalty status for '{customer.name}'.")
+        messages.success(request, f"Customer '{customer.name}' updated.")
+    else:
+        messages.error(request, "Could not update customer.")
+    return redirect("dashboard:loyalty")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Team / employees
 # ─────────────────────────────────────────────────────────────────────────────
 @cafe_admin_required
@@ -883,6 +953,211 @@ def receipt_test(request):
     else:
         messages.error(request, "Could not send the test — check the SMTP settings.")
     return redirect("dashboard:receipts")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reports
+# ─────────────────────────────────────────────────────────────────────────────
+def _reports_queryset(cafe, date_from, date_to, user_id=None, session_id=None, product_id=None):
+    """Paid orders in the period, with optional filters."""
+    qs = Order.objects.filter(
+        cafe=cafe,
+        status=Order.OrderStatus.PAID,
+        paid_at__date__gte=date_from,
+        paid_at__date__lte=date_to,
+    )
+    if user_id:
+        qs = qs.filter(employee_id=user_id)
+    if session_id:
+        qs = qs.filter(session_id=session_id)
+    if product_id:
+        qs = qs.filter(line_items__product_id=product_id)
+    return qs.distinct()
+
+
+@cafe_admin_required
+def reports(request):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    cafe = request.cafe
+
+    today = timezone.localdate()
+    raw_from = request.GET.get("date_from")
+    raw_to = request.GET.get("date_to")
+    date_from = parse_date(raw_from) if raw_from else (today - datetime.timedelta(days=6))
+    date_to = parse_date(raw_to) if raw_to else today
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    user_id = request.GET.get("user_id") or None
+    session_id = request.GET.get("session_id") or None
+    product_id = request.GET.get("product_id") or None
+
+    qs = _reports_queryset(cafe, date_from, date_to, user_id, session_id, product_id)
+
+    # ── KPIs ─────────────────────────────────────────────────────────────────
+    agg = qs.aggregate(orders=Count("id"), revenue=Sum("total"), avg_order=Avg("total"))
+    total_orders = agg["orders"] or 0
+    total_revenue = float(agg["revenue"] or 0)
+    avg_order = float(agg["avg_order"] or 0)
+
+    # Previous period for change %
+    period_days = (date_to - date_from).days + 1
+    prev_to = date_from - datetime.timedelta(days=1)
+    prev_from = prev_to - datetime.timedelta(days=period_days - 1)
+    qs_prev = _reports_queryset(cafe, prev_from, prev_to, user_id, session_id, product_id)
+    agg_prev = qs_prev.aggregate(orders=Count("id"), revenue=Sum("total"))
+    prev_orders = agg_prev["orders"] or 0
+    prev_revenue = float(agg_prev["revenue"] or 0)
+
+    def pct_change(now, prev):
+        if prev == 0:
+            return None
+        return round((now - prev) / prev * 100, 1)
+
+    # ── Sales chart ──────────────────────────────────────────────────────────
+    if period_days <= 2:
+        sales_qs = qs.annotate(bucket=TruncHour("paid_at")).values("bucket").annotate(
+            rev=Sum("total"), cnt=Count("id")
+        ).order_by("bucket")
+        chart_labels = [r["bucket"].strftime("%I %p") for r in sales_qs]
+    else:
+        sales_qs = qs.annotate(bucket=TruncDate("paid_at")).values("bucket").annotate(
+            rev=Sum("total"), cnt=Count("id")
+        ).order_by("bucket")
+        chart_labels = [r["bucket"].strftime("%d %b") for r in sales_qs]
+    chart_revenue = [float(r["rev"]) for r in sales_qs]
+
+    # ── Category pie ─────────────────────────────────────────────────────────
+    from cafe_pos.models import OrderLineItem, ProductCategory
+    cat_data = (
+        OrderLineItem.objects.filter(order__in=qs)
+        .values("product__category__name")
+        .annotate(cnt=Sum("quantity"), rev=Sum("line_total"))
+        .order_by("-rev")[:8]
+    )
+    cat_labels = [r["product__category__name"] or "Uncategorized" for r in cat_data]
+    cat_values = [float(r["rev"]) for r in cat_data]
+
+    # ── Top orders ───────────────────────────────────────────────────────────
+    top_orders = (
+        qs.select_related("table", "customer", "employee", "session")
+        .order_by("-total")[:10]
+    )
+
+    # ── Top products ─────────────────────────────────────────────────────────
+    top_products = (
+        OrderLineItem.objects.filter(order__in=qs)
+        .values("product__name")
+        .annotate(qty=Sum("quantity"), rev=Sum("line_total"))
+        .order_by("-rev")[:10]
+    )
+
+    # ── Top categories ───────────────────────────────────────────────────────
+    top_categories = (
+        OrderLineItem.objects.filter(order__in=qs)
+        .values("product__category__name")
+        .annotate(rev=Sum("line_total"))
+        .order_by("-rev")[:10]
+    )
+
+    team = cafe.profiles.filter(is_archived=False).select_related("user")
+    sessions = cafe.pos_sessions.order_by("-opened_at")[:20]
+    products = Product.objects.filter(cafe=cafe, is_active=True)
+
+    return render(request, "dashboard/reports.html", {
+        "date_from": date_from,
+        "date_to": date_to,
+        "user_id": user_id or "",
+        "session_id": session_id or "",
+        "product_id": product_id or "",
+        "total_orders": total_orders,
+        "total_revenue": total_revenue,
+        "avg_order": avg_order,
+        "orders_change": pct_change(total_orders, prev_orders),
+        "revenue_change": pct_change(total_revenue, prev_revenue),
+        "chart_labels": json.dumps(chart_labels),
+        "chart_revenue": json.dumps(chart_revenue),
+        "cat_labels": json.dumps(cat_labels),
+        "cat_values": json.dumps(cat_values),
+        "top_orders": top_orders,
+        "top_products": top_products,
+        "top_categories": top_categories,
+        "team": team,
+        "sessions": sessions,
+        "products": products,
+        "period_days": period_days,
+    })
+
+
+@cafe_admin_required
+def reports_export(request):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    cafe = request.cafe
+    today = timezone.localdate()
+    raw_from = request.GET.get("date_from")
+    raw_to = request.GET.get("date_to")
+    date_from = parse_date(raw_from) if raw_from else (today - datetime.timedelta(days=6))
+    date_to = parse_date(raw_to) if raw_to else today
+    user_id = request.GET.get("user_id") or None
+    session_id = request.GET.get("session_id") or None
+    product_id = request.GET.get("product_id") or None
+
+    qs = _reports_queryset(cafe, date_from, date_to, user_id, session_id, product_id)
+    from cafe_pos.models import OrderLineItem
+
+    wb = openpyxl.Workbook()
+    hdr_font = Font(bold=True, color="FFFFFF")
+    hdr_fill = PatternFill("solid", fgColor="C8903E")
+    hdr_align = Alignment(horizontal="center")
+
+    def add_sheet(name, headers, rows):
+        ws = wb.create_sheet(name)
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=1, column=col, value=h)
+            c.font = hdr_font
+            c.fill = hdr_fill
+            c.alignment = hdr_align
+        for row_idx, row in enumerate(rows, 2):
+            for col_idx, val in enumerate(row, 1):
+                ws.cell(row=row_idx, column=col_idx, value=val)
+        return ws
+
+    orders_rows = [
+        (o.order_number, o.session_id, o.paid_at.strftime("%d/%m/%Y %H:%M") if o.paid_at else "",
+         o.customer.name if o.customer_id else "", o.employee.username,
+         float(o.total))
+        for o in qs.select_related("customer", "employee").order_by("-paid_at")
+    ]
+    add_sheet("Orders", ["Order #", "Session", "Date", "Customer", "Employee", "Total (₹)"], orders_rows)
+
+    top_products = (
+        OrderLineItem.objects.filter(order__in=qs)
+        .values("product__name").annotate(qty=Sum("quantity"), rev=Sum("line_total")).order_by("-rev")
+    )
+    add_sheet("Top Products", ["Product", "Qty", "Revenue (₹)"],
+              [(r["product__name"], r["qty"], float(r["rev"])) for r in top_products])
+
+    top_cats = (
+        OrderLineItem.objects.filter(order__in=qs)
+        .values("product__category__name").annotate(rev=Sum("line_total")).order_by("-rev")
+    )
+    add_sheet("Top Categories", ["Category", "Revenue (₹)"],
+              [(r["product__category__name"] or "Uncategorized", float(r["rev"])) for r in top_cats])
+
+    if "Sheet" in wb.sheetnames:
+        del wb["Sheet"]
+
+    import io
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"report_{date_from}_{date_to}.xlsx"
+    response = HttpResponse(buf.read(),
+                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="{fname}"'
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────

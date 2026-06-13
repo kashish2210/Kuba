@@ -40,6 +40,9 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
 ]
 
+# Allow same-origin iframes (dashboard embeds POS/KDS)
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 
 # Application definition
 

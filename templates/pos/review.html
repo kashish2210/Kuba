@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Review {{ order.order_number }} — {{ order.cafe.name }}</title>
+    <style>
+        body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#faf7f0;font-family:Segoe UI,Arial,sans-serif;color:#23180d;padding:18px;}
+        .card{width:min(520px,100%);background:#fff;border:1px solid #eadfce;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.1);overflow:hidden;}
+        .head{padding:26px 28px;background:#2c1e0f;color:#fff;text-align:center;}
+        .head h1{margin:0;font-size:1.4rem;}
+        .head p{margin:6px 0 0;color:rgba(255,255,255,.72);}
+        .body{padding:24px 28px;}
+        .meta{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px dashed #ddd;color:#675c50;font-size:.92rem;}
+        .stars{display:flex;flex-direction:row-reverse;justify-content:center;gap:4px;margin:22px 0;}
+        .stars input{display:none;}
+        .stars label{font-size:2.6rem;color:#ddd;cursor:pointer;line-height:1;}
+        .stars input:checked ~ label,.stars label:hover,.stars label:hover ~ label{color:#c8903e;}
+        textarea{width:100%;min-height:110px;border:1px solid #ddd;border-radius:12px;padding:12px;font:inherit;resize:vertical;box-sizing:border-box;}
+        button{width:100%;margin-top:16px;border:none;border-radius:12px;padding:14px;background:#c8903e;color:#fff;font-weight:800;font-size:1rem;cursor:pointer;}
+        .error{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-weight:700;}
+        .done{padding:24px 28px;text-align:center;color:#675c50;}
+    </style>
+</head>
+<body>
+<main class="card">
+    <div class="head">
+        <h1>{{ order.cafe.name }}</h1>
+        <p>Review order {{ order.order_number }}</p>
+    </div>
+    {% if existing_review %}
+        <div class="done">
+            <h2>Thanks, review received.</h2>
+            <p>You already reviewed this order.</p>
+        </div>
+    {% else %}
+    <form class="body" method="post" action="{% url 'pos:order-review-submit' order.review_token %}">
+        {% csrf_token %}
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <div class="meta"><span>Customer</span><strong>{% if order.customer_id %}{{ order.customer.name }}{% else %}Guest{% endif %}</strong></div>
+        <div class="meta"><span>Total</span><strong>₹{{ order.total }}</strong></div>
+        <div class="stars" aria-label="Rating">
+            <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+            <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+            <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+            <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+            <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+        </div>
+        <textarea name="comment" placeholder="Tell us about your experience"></textarea>
+        <button type="submit">Submit review</button>
+    </form>
+    {% endif %}
+</main>
+</body>
+</html>

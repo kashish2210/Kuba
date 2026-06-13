@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -101,6 +103,7 @@ class CafeTable(models.Model):
     sort_order = models.PositiveIntegerField(default=0, help_text="Order within the floor.")
     seats = models.PositiveIntegerField(validators=[MinValueValidator(1)], default=4)
     is_active = models.BooleanField(default=True)
+    is_occupied = models.BooleanField(default=False, help_text="Locked by staff until table is manually cleared.")
 
     class Meta:
         ordering = ["sort_order", "id"]
@@ -197,11 +200,52 @@ class Promotion(models.Model):
         return self.name
 
 
+class LoyaltySettings(models.Model):
+    cafe = models.OneToOneField("tenants.Cafe", on_delete=models.CASCADE, related_name="loyalty_settings")
+    level_1_orders = models.PositiveIntegerField(default=1)
+    level_2_orders = models.PositiveIntegerField(default=3)
+    level_3_orders = models.PositiveIntegerField(default=10)
+    level_4_orders = models.PositiveIntegerField(default=20)
+    level_5_orders = models.PositiveIntegerField(default=50)
+    points_per_order = models.PositiveIntegerField(default=10)
+
+    class Meta:
+        verbose_name = "Loyalty settings"
+        verbose_name_plural = "Loyalty settings"
+
+    def thresholds(self):
+        return [
+            self.level_1_orders,
+            self.level_2_orders,
+            self.level_3_orders,
+            self.level_4_orders,
+            self.level_5_orders,
+        ]
+
+    def level_for_orders(self, order_count):
+        level = 0
+        for index, threshold in enumerate(self.thresholds(), start=1):
+            if order_count >= threshold:
+                level = index
+        return level
+
+    def __str__(self):
+        return f"Loyalty settings — {self.cafe.name}"
+
+
 class Customer(models.Model):
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="customers")
     name = models.CharField(max_length=150)
     email = models.EmailField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
+    manual_loyalty_level = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Optional admin override for this customer's loyalty level.",
+    )
+    is_banned = models.BooleanField(default=False)
+    ban_reason = models.CharField(max_length=255, blank=True)
 
     class Meta:
         constraints = [
@@ -214,6 +258,28 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+    def paid_order_count(self):
+        return self.orders.filter(status=Order.OrderStatus.PAID).count()
+
+    def loyalty_snapshot(self, settings_obj=None, paid_orders=None):
+        if settings_obj is None:
+            settings_obj, _ = LoyaltySettings.objects.get_or_create(cafe=self.cafe)
+        if paid_orders is None:
+            paid_orders = self.paid_order_count()
+        computed_level = settings_obj.level_for_orders(paid_orders)
+        level = self.manual_loyalty_level or computed_level
+        return {
+            "paid_orders": paid_orders,
+            "level": level,
+            "computed_level": computed_level,
+            "manual_level": self.manual_loyalty_level,
+            "points": paid_orders * settings_obj.points_per_order,
+            "next_level_orders": next(
+                (threshold for threshold in settings_obj.thresholds() if paid_orders < threshold),
+                None,
+            ),
+        }
 
 
 class POSSession(models.Model):
@@ -262,6 +328,7 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=12, decimal_places=2)
     coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     promotion = models.ForeignKey(Promotion, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    review_token = models.UUIDField(default=uuid.uuid4, null=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
 
@@ -287,6 +354,13 @@ class OrderLineItem(models.Model):
     line_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     line_total = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
     kds_status = models.CharField(max_length=20, choices=KDSStatus.choices, default=KDSStatus.TO_COOK)
+    prepared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="prepared_order_lines",
+    )
 
     def __str__(self):
         return f"{self.order.order_number} - {self.product.name}"
@@ -308,6 +382,35 @@ class PaymentRecord(models.Model):
 
     def __str__(self):
         return f"Payment for {self.order.order_number}"
+
+
+class OrderReview(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="order_reviews")
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="review")
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviews")
+    cashier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_reviews_as_cashier",
+    )
+    kitchen_staff = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="order_reviews_as_kitchen",
+    )
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(blank=True)
+    customer_name = models.CharField(max_length=150, blank=True)
+    customer_email = models.EmailField(max_length=255, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.order.order_number} — {self.rating}/5"
 
 
 class PaymentSettings(models.Model):

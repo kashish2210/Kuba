@@ -7,9 +7,11 @@ app_name = "pos"
 urlpatterns = [
     path("", views.terminal, name="terminal"),
     path("kds/", views.kds_display, name="kds"),
+    path("pds/", views.pds_display, name="pds"),
     path("session/open/", views.session_open, name="session-open"),
     path("session/close/", views.session_close, name="session-close"),
     path("tables/", views.tables, name="tables"),
+    path("tables/<int:pk>/release/", views.table_release, name="table-release"),
 
     path("orders/", views.orders_page, name="orders"),
     path("orders/data/", views.orders_data, name="orders-data"),
@@ -32,5 +34,7 @@ urlpatterns = [
     path("customers/create/", views.customer_create_update, name="customer-create"),
     path("customers/<int:pk>/edit/", views.customer_create_update, name="customer-edit"),
     path("customers/<int:pk>/delete/", views.customer_delete, name="customer-delete"),
+    path("review/<uuid:token>/", views.order_review, name="order-review"),
+    path("review/<uuid:token>/submit/", views.order_review_submit, name="order-review-submit"),
     path("order/<int:pk>/line/<int:lid>/kds-status/", views.kds_update_line_status, name="kds-update-line-status"),
 ]
