@@ -52,7 +52,12 @@
                         {% else %}
                             <span style="width:40px;height:40px;border-radius:8px;background:var(--surface-alt,#eee);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🍽️</span>
                         {% endif %}
-                        <span style="text-align:left;"><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></span>
+                        <div style="text-align:left;">
+                            <strong>{{ p.name }}</strong> {% if p.is_featured %}<span title="Featured" style="color:#f59e0b;">★</span>{% endif %}
+                            <div class="text-xs text-muted">{{ p.unit_of_measure }}
+                                {% if p.tags %}<span style="margin-left:4px;padding:2px 6px;background:var(--surface-alt);border-radius:4px;font-size:0.65rem;">{{ p.tags }}</span>{% endif %}
+                            </div>
+                        </div>
                     </div>
                 </td>
                 <td data-label="Category">

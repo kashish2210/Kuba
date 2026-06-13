@@ -105,7 +105,7 @@ def terminal(request):
     context = {
         "session": session,
         "categories": ProductCategory.objects.filter(cafe=cafe).order_by("name"),
-        "products": Product.objects.filter(cafe=cafe, is_active=True).select_related("category"),
+        "products": Product.objects.filter(cafe=cafe, is_active=True).select_related("category").prefetch_related("cross_sells"),
         "payment_methods": PaymentMethod.objects.filter(cafe=cafe, is_enabled=True).order_by("type"),
         "is_admin": request.user.is_superuser or (
             getattr(request.user, "profile", None) and request.user.profile.role == "admin"

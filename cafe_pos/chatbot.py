@@ -13,7 +13,8 @@ RULES:
 1. Only answer questions about {cafe_name}'s menu, food, and dining experience.
 2. Be warm, concise, and helpful.
 3. If asked something unrelated to the cafe or menu, politely redirect.
-4. Keep responses short (2-3 paragraphs max).
+4. When recommending a product, ALWAYS include its ID in this exact format: [PRODUCT:id-here] so the frontend can render a clickable product card with its image.
+5. Keep responses short (2-3 paragraphs max).
 {custom_instructions}
 
 Current menu:
@@ -29,11 +30,14 @@ def scrape_menu_data(cafe):
         products = []
         for p in cat.products.filter(is_active=True):
             products.append({
+                "id": p.id,
                 "name": p.name,
                 "price": float(p.price),
                 "unit": p.unit_of_measure,
                 "description": p.description or "",
                 "tax_pct": float(p.tax_percentage),
+                "is_featured": p.is_featured,
+                "tags": [t.strip() for t in (p.tags or "").split(",") if t.strip()],
             })
         if products:
             categories_data.append({"category": cat.name, "items": products})
@@ -154,4 +158,32 @@ def get_ai_response(user_message, chat_history, assistant_settings, cafe):
             "Please try again in a moment."
         )
 
-    return {"reply": response_text}
+    # Extract product references [PRODUCT:id] from the response
+    import re
+    product_ids = re.findall(r'\[PRODUCT:([\w-]+)\]', response_text)
+
+    # Clean the [PRODUCT:id] tags from the visible text
+    clean_text = re.sub(r'\[PRODUCT:[\w-]+\]', '', response_text).strip()
+
+    # Fetch product data for the referenced products
+    product_cards = []
+    if product_ids:
+        from .models import Product
+        for pid in product_ids:
+            try:
+                p = Product.objects.get(id=pid, cafe=cafe, is_active=True)
+                image_url = p.image.url if p.image else None
+                product_cards.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'price': str(p.price),
+                    'description': p.description,
+                    'image': image_url,
+                })
+            except (Product.DoesNotExist, ValueError):
+                pass
+
+    return {
+        "reply": clean_text,
+        "products": product_cards
+    }

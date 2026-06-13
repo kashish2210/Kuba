@@ -67,13 +67,18 @@ class ProductForm(StyledFormMixin, forms.ModelForm):
         fields = [
             "name", "category", "price", "unit_of_measure",
             "tax_percentage", "description", "image", "show_in_kds", "is_active",
+            "is_featured", "tags", "cross_sells"
         ]
-        widgets = {"description": forms.Textarea(attrs={"rows": 3})}
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+            "cross_sells": forms.SelectMultiple(attrs={"size": 6}),
+        }
 
     def __init__(self, *args, cafe=None, **kwargs):
         super().__init__(*args, **kwargs)
         if cafe is not None:
             self.fields["category"].queryset = ProductCategory.objects.filter(cafe=cafe)
+            self.fields["cross_sells"].queryset = Product.objects.filter(cafe=cafe, is_active=True).exclude(pk=self.instance.pk if self.instance else None)
 
 
 class CouponForm(StyledFormMixin, forms.ModelForm):

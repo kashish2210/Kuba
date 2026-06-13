@@ -207,8 +207,50 @@
       var card = e.target.closest(".product-card");
       if (!card) return;
       if (!order) { openFloor(); toast("Select a table first"); return; }
-      api(orderUrl("line/"), "POST", { product: card.dataset.id }).then(setOrder).catch(showErr);
+      api(orderUrl("line/"), "POST", { product: card.dataset.id }).then(function(res) {
+          setOrder(res);
+          showCrossSells(card.dataset.crossSells);
+      }).catch(showErr);
     });
+
+    function showCrossSells(crossSellsStr) {
+      var container = $("cross-sell-container");
+      var items = $("cross-sell-items");
+      if (!container || !items) return;
+      
+      if (!crossSellsStr) {
+          container.style.display = "none";
+          return;
+      }
+      
+      var ids = crossSellsStr.split(",");
+      items.innerHTML = "";
+      var found = 0;
+      ids.forEach(function(id) {
+          var pCard = document.querySelector('.product-card[data-id="' + id + '"]');
+          if (pCard) {
+              var btn = document.createElement("button");
+              btn.className = "btn btn-sm btn-secondary";
+              btn.style.whiteSpace = "nowrap";
+              btn.style.padding = "4px 10px";
+              btn.textContent = "+ " + pCard.querySelector(".pc-name").textContent;
+              btn.onclick = function() {
+                  api(orderUrl("line/"), "POST", { product: id }).then(function(res) {
+                      setOrder(res);
+                      toast("Added " + btn.textContent.replace("+ ", ""));
+                  }).catch(showErr);
+              };
+              items.appendChild(btn);
+              found++;
+          }
+      });
+      
+      if (found > 0) {
+          container.style.display = "block";
+      } else {
+          container.style.display = "none";
+      }
+    }
 
     // ── Cart line qty / remove ───────────────────────────────────────────────
     $("cart-lines").addEventListener("click", function (e) {

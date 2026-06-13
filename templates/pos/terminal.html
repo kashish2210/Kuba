@@ -15,7 +15,10 @@
         <div class="product-grid" id="product-grid">
             {% for p in products %}
                 <button class="product-card" data-id="{{ p.id }}" data-cat="{{ p.category_id }}"
-                        data-name="{{ p.name|lower }}" style="--cat:{{ p.category.color }};">
+                        data-name="{{ p.name|lower }}" 
+                        data-cross-sells="{% for cs in p.cross_sells.all %}{{ cs.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                        style="--cat:{{ p.category.color }};">
+                    {% if p.is_featured %}<span class="pc-featured-badge">★</span>{% endif %}
                     <span class="pc-dot {% if p.is_active %}on{% else %}off{% endif %}"></span>
                     {% if p.image %}<img class="pc-img" src="{{ p.image.url }}" alt="">{% endif %}
                     <span class="pc-name">{{ p.name }}</span>
@@ -34,6 +37,11 @@
         </div>
         <div class="cart-lines" id="cart-lines">
             <div class="cart-placeholder">Pick a table, then tap products to add them.</div>
+        </div>
+
+        <div id="cross-sell-container" style="display:none; padding:12px 18px; background:#fffcf0; border-bottom:1px solid var(--line); font-size:0.8rem;">
+            <div style="font-weight:800; color:#d97706; margin-bottom:8px; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Customer may like:</div>
+            <div id="cross-sell-items" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;"></div>
         </div>
 
         <button class="cart-kitchen" id="btn-send-kitchen">

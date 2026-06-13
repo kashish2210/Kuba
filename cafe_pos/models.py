@@ -79,6 +79,11 @@ class Product(models.Model):
     image = models.ImageField(upload_to="product_images/", null=True, blank=True)
     show_in_kds = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
+    
+    # New fields for features and upselling
+    is_featured = models.BooleanField(default=False, help_text="Mark as Featured or Chef's Special")
+    tags = models.CharField(max_length=255, null=True, blank=True, help_text="Comma-separated tags (e.g. Spicy, Vegan, Bestseller)")
+    cross_sells = models.ManyToManyField("self", blank=True, symmetrical=False, related_name="recommended_with")
 
     def __str__(self):
         return self.name
