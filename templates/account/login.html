@@ -1,0 +1,80 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Login — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Welcome back</h2>
+    <p class="auth-form-subtitle">Sign in to your KUBA Cafe POS account</p>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="auth-errors">
+        <ul>
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<form method="post" class="auth-form" id="login-form">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label class="form-label" for="id_login">Email</label>
+        <input
+            type="email"
+            name="login"
+            id="id_login"
+            placeholder="you@example.com"
+            value="{{ form.login.value|default:'' }}"
+            required
+            autofocus
+        />
+        {% if form.login.errors %}
+            <div class="auth-errors" style="margin-top: 6px; padding: 8px 12px;">
+                {{ form.login.errors }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="id_password">Password</label>
+        <div class="password-wrapper">
+            <input
+                type="password"
+                name="password"
+                id="id_password"
+                placeholder="Enter your password"
+                required
+            />
+            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+        {% if form.password.errors %}
+            <div class="auth-errors" style="margin-top: 6px; padding: 8px 12px;">
+                {{ form.password.errors }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="auth-forgot">
+        <a href="{% url 'account_reset_password' %}">Forgot Password?</a>
+    </div>
+
+    {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    {% endif %}
+
+    <button type="submit" class="auth-btn" id="btn-login">
+        <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign In
+    </button>
+</form>
+
+<div class="auth-switch">
+    Don't have an account? <a href="{% url 'account_signup' %}">Sign up here</a>
+</div>
+{% endblock %}

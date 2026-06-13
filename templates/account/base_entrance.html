@@ -1,0 +1,570 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}KUBA — Cafe POS{% endblock %}</title>
+    <meta name="description" content="{% block meta_desc %}KUBA Cafe POS — Modern restaurant point-of-sale system.{% endblock %}" />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap"
+        rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+
+    <style>
+        /* ─── Auth Page Layout ─────────────────────────────────────────────── */
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            background: var(--surface);
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(200, 144, 62, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(107, 140, 90, 0.05) 0%, transparent 50%);
+        }
+
+        /* Left panel — branding */
+        .auth-brand-panel {
+            flex: 1;
+            background: var(--dark-roast);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-brand-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 30% 20%, rgba(200, 144, 62, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(107, 140, 90, 0.1) 0%, transparent 50%);
+        }
+
+        .auth-brand-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 380px;
+        }
+
+        .auth-brand-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, var(--caramel), var(--amber));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px;
+            box-shadow: 0 12px 40px rgba(200, 144, 62, 0.35);
+            animation: floatIcon 3s ease-in-out infinite;
+        }
+
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .auth-brand-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--dark-roast);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .auth-brand-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--latte);
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+
+        .auth-brand-sub {
+            color: rgba(245, 239, 230, 0.55);
+            font-size: 1rem;
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        .auth-brand-features {
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .auth-brand-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(245, 239, 230, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .auth-brand-feature-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(200, 144, 62, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .auth-brand-feature-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--caramel-lt);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Decorative circles */
+        .auth-deco-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(200, 144, 62, 0.1);
+        }
+
+        .auth-deco-circle.c1 {
+            width: 300px; height: 300px;
+            top: -80px; right: -60px;
+            animation: spinSlow 30s linear infinite;
+        }
+
+        .auth-deco-circle.c2 {
+            width: 200px; height: 200px;
+            bottom: -40px; left: -30px;
+            border-color: rgba(107, 140, 90, 0.12);
+            animation: spinSlow 25s linear infinite reverse;
+        }
+
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Right panel — form */
+        .auth-form-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 32px;
+            overflow-y: auto;
+        }
+
+        .auth-form-container {
+            width: 100%;
+            max-width: 440px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .auth-form-header {
+            margin-bottom: 32px;
+        }
+
+        .auth-form-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .auth-form-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+        }
+
+        /* Form styles */
+        .auth-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .auth-form .form-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 7px;
+            display: block;
+        }
+
+        .auth-form input[type="text"],
+        .auth-form input[type="email"],
+        .auth-form input[type="password"],
+        .auth-form input[type="tel"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.8);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .auth-form input:focus {
+            border-color: var(--caramel);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(200, 144, 62, 0.1);
+        }
+
+        .auth-form input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Password field wrapper */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+            display: flex;
+            transition: color 0.3s;
+        }
+
+        .password-toggle:hover { color: var(--text-primary); }
+
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Auth button */
+        .auth-btn {
+            width: 100%;
+            padding: 13px 24px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--caramel), var(--caramel-lt));
+            color: var(--dark-roast);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(200, 144, 62, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(200, 144, 62, 0.4);
+            background: linear-gradient(135deg, var(--caramel-lt), var(--amber));
+        }
+
+        .auth-btn:active { transform: translateY(0); }
+
+        .auth-btn svg {
+            width: 18px; height: 18px;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round;
+        }
+
+        .auth-btn-secondary {
+            background: var(--dark-roast);
+            color: var(--latte);
+            box-shadow: 0 4px 16px rgba(26, 18, 9, 0.15);
+        }
+
+        .auth-btn-secondary:hover {
+            background: var(--espresso);
+            color: var(--latte);
+            box-shadow: 0 8px 28px rgba(26, 18, 9, 0.25);
+        }
+
+        /* Divider */
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .auth-divider span {
+            padding: 0 16px;
+        }
+
+        /* Forgot / switch links */
+        .auth-forgot {
+            text-align: right;
+            margin: -8px 0 20px;
+        }
+
+        .auth-forgot a {
+            font-size: 0.84rem;
+            color: var(--caramel);
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .auth-forgot a:hover { color: var(--caramel-lt); }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .auth-switch a {
+            color: var(--caramel);
+            font-weight: 700;
+            transition: color 0.3s;
+        }
+
+        .auth-switch a:hover { color: var(--caramel-lt); }
+
+        /* Error messages */
+        .auth-errors {
+            background: rgba(231, 76, 60, 0.08);
+            border: 1px solid rgba(231, 76, 60, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #c0392b;
+        }
+
+        .auth-errors ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .auth-errors li::before {
+            content: '⚠ ';
+        }
+
+        /* Success message */
+        .auth-success {
+            background: rgba(39, 174, 96, 0.08);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #1e8449;
+        }
+
+        /* Info card on auth pages */
+        .auth-info-card {
+            background: rgba(200, 144, 62, 0.06);
+            border: 1px solid rgba(200, 144, 62, 0.15);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            font-size: 0.86rem;
+            color: var(--toffee);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .auth-info-card svg {
+            width: 18px; height: 18px;
+            stroke: var(--caramel);
+            fill: none; stroke-width: 2;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* Footer on auth pages */
+        .auth-footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .auth-footer .heart { color: var(--caramel); }
+
+        /* Mobile brand (shown only on mobile) */
+        .auth-mobile-brand {
+            display: none;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-mobile-brand-icon {
+            width: 52px; height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--caramel), var(--amber));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 24px rgba(200, 144, 62, 0.3);
+        }
+
+        .auth-mobile-brand-icon svg {
+            width: 26px; height: 26px;
+            stroke: var(--dark-roast);
+            fill: none; stroke-width: 2;
+            stroke-linecap: round;
+        }
+
+        .auth-mobile-brand-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.06em;
+        }
+
+        /* ─── Responsive ───────────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .auth-brand-panel { display: none; }
+            .auth-form-panel { padding: 32px 20px; }
+            .auth-mobile-brand { display: block; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="auth-page">
+        <!-- Left: Branding Panel -->
+        <div class="auth-brand-panel">
+            <div class="auth-deco-circle c1"></div>
+            <div class="auth-deco-circle c2"></div>
+            <div class="auth-brand-content">
+                <div class="auth-brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                        <line x1="6" y1="1" x2="6" y2="4"/>
+                        <line x1="10" y1="1" x2="10" y2="4"/>
+                        <line x1="14" y1="1" x2="14" y2="4"/>
+                    </svg>
+                </div>
+                <h1 class="auth-brand-title">KUBA</h1>
+                <p class="auth-brand-sub">Your complete restaurant POS system. Manage orders, kitchen, payments & analytics.</p>
+
+                <div class="auth-brand-features">
+                    <div class="auth-brand-feature">
+                        <div class="auth-brand-feature-icon">
+                            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        </div>
+                        Fast POS terminal with live kitchen display
+                    </div>
+                    <div class="auth-brand-feature">
+                        <div class="auth-brand-feature-icon">
+                            <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        </div>
+                        Cash, Card & UPI QR payments
+                    </div>
+                    <div class="auth-brand-feature">
+                        <div class="auth-brand-feature-icon">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </div>
+                        Real-time sales reports & dashboards
+                    </div>
+                    <div class="auth-brand-feature">
+                        <div class="auth-brand-feature-icon">
+                            <svg viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg>
+                        </div>
+                        Coupons, promotions & floor management
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Form Panel -->
+        <div class="auth-form-panel">
+            <div class="auth-form-container">
+                <!-- Mobile-only brand -->
+                <div class="auth-mobile-brand">
+                    <div class="auth-mobile-brand-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                            <line x1="6" y1="1" x2="6" y2="4"/>
+                            <line x1="10" y1="1" x2="10" y2="4"/>
+                            <line x1="14" y1="1" x2="14" y2="4"/>
+                        </svg>
+                    </div>
+                    <div class="auth-mobile-brand-name">KUBA Cafe POS</div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="{% if 'error' in message.tags or 'danger' in message.tags %}auth-errors{% elif 'success' in message.tags %}auth-success{% else %}auth-info-card{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% block content %}{% endblock %}
+
+                <div class="auth-footer">
+                    © 2025 KUBA Cafe POS · Built with <span class="heart">♥</span> for restaurants
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Password visibility toggles
+    document.querySelectorAll('.password-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const input = this.parentElement.querySelector('input');
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            this.innerHTML = isPassword
+                ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        });
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

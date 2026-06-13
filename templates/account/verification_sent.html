@@ -1,0 +1,26 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Verify Email — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Verify your email</h2>
+    <p class="auth-form-subtitle">We've sent a verification email to your address</p>
+</div>
+
+<div class="auth-info-card">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+    <span>Please check your inbox and click the verification link to activate your account. Don't forget to check your spam folder.</span>
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+    <svg viewBox="0 0 24 24" style="width: 56px; height: 56px; stroke: var(--caramel); fill: none; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.5;">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22 6 12 13 2 6"/>
+    </svg>
+</div>
+
+<div class="auth-switch">
+    Already verified? <a href="{% url 'account_login' %}">Sign in here</a>
+</div>
+{% endblock %}

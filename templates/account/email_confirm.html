@@ -1,0 +1,28 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Confirm Email — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Confirm email address</h2>
+    <p class="auth-form-subtitle">
+        Please confirm that
+        {% if confirmation %}
+            <strong>{{ confirmation.email_address.email }}</strong>
+        {% endif %}
+        is your email address.
+    </p>
+</div>
+
+<form method="post" class="auth-form" id="email-confirm-form">
+    {% csrf_token %}
+    <button type="submit" class="auth-btn" id="btn-confirm-email">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Confirm Email
+    </button>
+</form>
+
+<div class="auth-switch" style="margin-top: 16px;">
+    Back to <a href="{% url 'account_login' %}">Sign in</a>
+</div>
+{% endblock %}

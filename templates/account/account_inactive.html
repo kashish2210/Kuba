@@ -1,0 +1,18 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Account Inactive — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Account Inactive</h2>
+    <p class="auth-form-subtitle">Your account has been deactivated</p>
+</div>
+
+<div class="auth-errors">
+    <p>This account has been archived or deactivated. Please contact your administrator to reactivate it.</p>
+</div>
+
+<div class="auth-switch">
+    Back to <a href="{% url 'account_login' %}">Sign in</a>
+</div>
+{% endblock %}

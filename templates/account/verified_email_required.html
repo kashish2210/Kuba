@@ -1,0 +1,19 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Email Required — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Email Required</h2>
+    <p class="auth-form-subtitle">A verified email is required to proceed</p>
+</div>
+
+<div class="auth-info-card">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <span>You need to verify your email address before you can use KUBA Cafe POS. Please check your inbox for the verification link.</span>
+</div>
+
+<div class="auth-switch">
+    Back to <a href="{% url 'account_login' %}">Sign in</a>
+</div>
+{% endblock %}

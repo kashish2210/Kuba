@@ -1,0 +1,28 @@
+{% extends "account/base_entrance.html" %}
+
+{% block title %}Logout — KUBA Cafe POS{% endblock %}
+
+{% block content %}
+<div class="auth-form-header">
+    <h2 class="auth-form-title">Sign Out</h2>
+    <p class="auth-form-subtitle">Are you sure you want to sign out?</p>
+</div>
+
+<div class="auth-info-card">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <span>Your current session will be ended and you'll need to sign in again to access the POS system.</span>
+</div>
+
+<form method="post" class="auth-form" id="logout-form">
+    {% csrf_token %}
+
+    <button type="submit" class="auth-btn auth-btn-secondary" id="btn-logout">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Yes, Sign Out
+    </button>
+</form>
+
+<div class="auth-switch" style="margin-top: 16px;">
+    Changed your mind? <a href="{% url 'account_login' %}">Go back</a>
+</div>
+{% endblock %}
