@@ -23,9 +23,17 @@
         display:flex; flex-direction:column; align-items:center; justify-content:center;
         gap:4px; transition:all .15s;
     }
+    .table-card[draggable="true"] { cursor:grab; }
+    .table-card.dragging { opacity:.45; transform:scale(.98); }
+    .table-card.drag-over { border-color:var(--primary,#2c3e50); box-shadow:0 0 0 2px rgba(44,62,80,.1); }
     .table-card.inactive { opacity:.5; }
     .table-card .t-num { font-size:1.6rem; font-weight:800; color:var(--text,#222); line-height:1; }
     .table-card .t-seats { font-size:0.75rem; color:var(--text-muted,#888); }
+    .table-card .t-handle {
+        position:absolute; top:8px; left:8px; display:flex; align-items:center; justify-content:center;
+        width:24px; height:24px; border-radius:6px; font-size:13px; color:var(--text-muted,#888);
+        background:rgba(255,255,255,.65);
+    }
     .table-card .t-actions {
         position:absolute; top:8px; right:8px; display:flex; gap:4px; opacity:0; transition:opacity .15s;
     }
@@ -46,6 +54,7 @@
     details.panel { margin-bottom:16px; }
     details.panel summary { cursor:pointer; font-weight:600; color:var(--primary,#2c3e50); }
     .row-form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px; }
+    .floor-tab.drop-target { border-color:var(--primary,#2c3e50); background:rgba(44,62,80,.08); }
 </style>
 {% endblock %}
 
@@ -58,9 +67,9 @@
 </div>
 
 <!-- Floor tabs -->
-<div class="floor-tabs">
+<div class="floor-tabs" data-floor-tabs>
     {% for f in floors %}
-        <a href="?floor={{ f.id }}" class="floor-tab {% if active_floor and f.id == active_floor.id %}active{% endif %}">{{ f.name }}</a>
+        <a href="?floor={{ f.id }}" class="floor-tab {% if active_floor and f.id == active_floor.id %}active{% endif %}" data-floor-tab data-floor-id="{{ f.id }}">{{ f.name }}</a>
     {% endfor %}
     <details class="panel" style="margin:0 0 0 8px;">
         <summary class="floor-tab" style="display:inline-block;">+ Add floor</summary>
@@ -102,7 +111,7 @@
         {% endif %}
     </div>
     <div class="card-body">
-        <div class="table-grid">
+        <div class="table-grid" data-floor-grid data-floor-id="{{ active_floor.id }}">
             {% for t in tables %}
                 {% if edit_table and t.id == edit_table.id %}
                     <div class="table-card" style="aspect-ratio:auto;">
@@ -121,7 +130,13 @@
                         </form>
                     </div>
                 {% else %}
-                    <div class="table-card {% if not t.is_active %}inactive{% endif %}">
+                    <div class="table-card {% if not t.is_active %}inactive{% endif %}"
+                         draggable="true"
+                         data-table-card
+                         data-table-id="{{ t.id }}"
+                         data-floor-id="{{ active_floor.id }}"
+                         title="Drag to reorder or move to another floor">
+                        <div class="t-handle">⠿</div>
                         <div class="t-actions">
                             <a href="?floor={{ active_floor.id }}&edit_table={{ t.id }}" title="Edit">✎</a>
                             <form method="post" action="{% url 'dashboard:table-delete' t.id %}" onsubmit="return confirm('Delete table {{ t.table_number }}?');" style="display:inline;">
@@ -162,4 +177,142 @@
     </div>
 </div></div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const moveUrl = "{% url 'dashboard:table-move' %}";
+    const csrfToken = document.cookie.split('; ').find(function(item) {
+        return item.startsWith('csrftoken=');
+    })?.split('=')[1];
+
+    const grid = document.querySelector('[data-floor-grid]');
+    const floorTabs = Array.from(document.querySelectorAll('[data-floor-tab]'));
+    const tableCards = Array.from(document.querySelectorAll('[data-table-card]'));
+    if (!grid || !floorTabs.length || !tableCards.length) {
+        return;
+    }
+
+    let draggedId = null;
+
+    async function moveTable(payload) {
+        const response = await fetch(moveUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || '',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(function() {
+            return { ok: false, message: 'Invalid server response.' };
+        });
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Could not move table.');
+        }
+
+        window.location.href = data.redirect_url || window.location.href;
+    }
+
+    tableCards.forEach(function(card) {
+        card.addEventListener('dragstart', function(event) {
+            draggedId = card.dataset.tableId;
+            card.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedId);
+        });
+
+        card.addEventListener('dragend', function() {
+            draggedId = null;
+            card.classList.remove('dragging');
+            tableCards.forEach(function(item) { item.classList.remove('drag-over'); });
+            floorTabs.forEach(function(tab) { tab.classList.remove('drop-target'); });
+            grid.classList.remove('drop-target');
+        });
+
+        card.addEventListener('dragover', function(event) {
+            event.preventDefault();
+            card.classList.add('drag-over');
+        });
+
+        card.addEventListener('dragleave', function() {
+            card.classList.remove('drag-over');
+        });
+
+        card.addEventListener('drop', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            card.classList.remove('drag-over');
+            if (!draggedId || draggedId === card.dataset.tableId) {
+                return;
+            }
+            moveTable({
+                table_id: draggedId,
+                target_floor_id: card.dataset.floorId,
+                swap_table_id: card.dataset.tableId,
+            }).catch(function(error) {
+                alert(error.message);
+            });
+        });
+    });
+
+    grid.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        grid.classList.add('drop-target');
+    });
+
+    grid.addEventListener('dragleave', function(event) {
+        if (!grid.contains(event.relatedTarget)) {
+            grid.classList.remove('drop-target');
+        }
+    });
+
+    grid.addEventListener('drop', function(event) {
+        event.preventDefault();
+        if (event.target.closest('[data-table-card]')) {
+            return;
+        }
+        grid.classList.remove('drop-target');
+        if (!draggedId) {
+            return;
+        }
+        moveTable({
+            table_id: draggedId,
+            target_floor_id: grid.dataset.floorId,
+            before_table_id: null,
+        }).catch(function(error) {
+            alert(error.message);
+        });
+    });
+
+    floorTabs.forEach(function(tab) {
+        tab.addEventListener('dragover', function(event) {
+            event.preventDefault();
+            tab.classList.add('drop-target');
+        });
+
+        tab.addEventListener('dragleave', function() {
+            tab.classList.remove('drop-target');
+        });
+
+        tab.addEventListener('drop', function(event) {
+            event.preventDefault();
+            tab.classList.remove('drop-target');
+            if (!draggedId) {
+                return;
+            }
+            moveTable({
+                table_id: draggedId,
+                target_floor_id: tab.dataset.floorId,
+                before_table_id: null,
+            }).catch(function(error) {
+                alert(error.message);
+            });
+        });
+    });
+})();
+</script>
 {% endblock %}

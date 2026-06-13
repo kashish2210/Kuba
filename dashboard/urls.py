@@ -15,6 +15,7 @@ urlpatterns = [
     path("tables/add/", views.table_create, name="table-create"),
     path("tables/<int:pk>/edit/", views.table_update, name="table-update"),
     path("tables/<int:pk>/delete/", views.table_delete, name="table-delete"),
+    path("tables/move/", views.table_move, name="table-move"),
 
     # Products & categories
     path("products/", views.products, name="products"),

@@ -96,11 +96,12 @@ class CafeTable(models.Model):
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="tables")
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name="tables")
     table_number = models.CharField(max_length=20)
+    sort_order = models.PositiveIntegerField(default=0, help_text="Order within the floor.")
     seats = models.PositiveIntegerField(validators=[MinValueValidator(1)], default=4)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["id"]
+        ordering = ["sort_order", "id"]
         constraints = [
             models.UniqueConstraint(fields=["floor", "table_number"], name="uniq_table_per_floor"),
         ]
