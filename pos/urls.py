@@ -31,4 +31,5 @@ urlpatterns = [
     path("customers/create/", views.customer_create_update, name="customer-create"),
     path("customers/<int:pk>/edit/", views.customer_create_update, name="customer-edit"),
     path("customers/<int:pk>/delete/", views.customer_delete, name="customer-delete"),
+    path("order/<int:pk>/line/<int:lid>/kds-status/", views.kds_update_line_status, name="kds-update-line-status"),
 ]

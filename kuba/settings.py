@@ -44,7 +44,9 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'jazzmin',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -93,6 +95,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'kuba.wsgi.application'
+ASGI_APPLICATION = 'kuba.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # Database

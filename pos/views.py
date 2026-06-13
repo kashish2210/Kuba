@@ -27,8 +27,11 @@ from dashboard.mixins import cafe_admin_required
 from tenants.utils import log_action
 
 from . import services
+from .kds import broadcast_order_to_kds, kds_group_name
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
-EDITABLE_STATUSES = {Order.OrderStatus.DRAFT, Order.OrderStatus.SENT_TO_KITCHEN}
+EDITABLE_STATUSES = {Order.OrderStatus.DRAFT, Order.OrderStatus.SENT_TO_KITCHEN, Order.OrderStatus.READY}
 
 
 def _data(request):
@@ -386,6 +389,7 @@ def order_send_kitchen(request, pk):
     order.line_items.update(kds_status=OrderLineItem.KDSStatus.TO_COOK)
     log_action("update", cafe=request.cafe, request=request, target=order,
                message=f"Sent {order.order_number} to kitchen.")
+    broadcast_order_to_kds(order, event_type="new_order")
     return JsonResponse(services.order_json(order))
 
 
@@ -429,6 +433,7 @@ def order_pay(request, pk):
 
     log_action("other", cafe=request.cafe, request=request, target=order,
                message=f"Payment for {order.order_number}: {method} ₹{total}.")
+    broadcast_order_to_kds(order, event_type="order_updated")
 
     # Auto-email the receipt to the customer if we have their address (best-effort).
     receipt_emailed = False
@@ -671,3 +676,36 @@ def customer_delete(request, pk):
     customer = get_object_or_404(Customer, pk=pk, cafe=request.cafe)
     customer.delete()
     return JsonResponse({"ok": True})
+@require_POST
+def kds_update_line_status(request, pk, lid):
+    order = _get_order(request, pk)
+    line = get_object_or_404(OrderLineItem, pk=lid, order=order)
+    data = _data(request)
+    new_status = data.get("kds_status")
+    
+    if new_status in {s.value for s in OrderLineItem.KDSStatus}:
+        line.kds_status = new_status
+        line.save(update_fields=["kds_status"])
+        
+        all_completed = not order.line_items.exclude(kds_status=OrderLineItem.KDSStatus.COMPLETED).exists()
+        if all_completed:
+            if order.status == Order.OrderStatus.SENT_TO_KITCHEN:
+                order.status = Order.OrderStatus.READY
+                order.save(update_fields=["status"])
+            
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    kds_group_name(order.cafe_id),
+                    {
+                        "type": "kds.order",
+                        "event": "order_removed",
+                        "order": {"id": order.id},
+                    },
+                )
+            return JsonResponse({"ok": True, "kds_status": new_status, "order_status": order.status})
+
+        broadcast_order_to_kds(order, event_type="order_updated")
+        return JsonResponse({"ok": True, "kds_status": new_status})
+    
+    return JsonResponse({"error": "Invalid status."}, status=400)

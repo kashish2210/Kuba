@@ -58,7 +58,7 @@ urlpatterns = [
 
     # Deferred POS modules
     path("pos/", views.coming_soon, name="pos-session"),
-    path("kds/", views.coming_soon, name="kds"),
+    path("kds/", views.kds_display, name="kds"),
     path("reports/", views.coming_soon, name="reports"),
     path("bookings/", views.coming_soon, name="bookings"),
 ]

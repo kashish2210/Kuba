@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Kitchen Display — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Kitchen Display{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kds-shell { min-height: calc(100vh - 140px); display: flex; flex-direction: column; gap: 16px; }
+    .kds-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .kds-title { margin: 0; font-size: 1.8rem; color: var(--text,#222); }
+    .kds-status { padding: 7px 12px; border-radius: 999px; font-weight: 700; font-size: .85rem; background: #f1ede6; color: #6b6258; }
+    .kds-status.live { background: #e7f6ec; color: #15803d; }
+    .kds-status.offline { background: #fbeaea; color: #b91c1c; }
+    .kds-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+    .kds-ticket { border: 1px solid var(--border,#e2ddd4); border-top: 5px solid #c8903e; border-radius: 8px; background: #fff; box-shadow: 0 8px 22px rgba(0,0,0,.06); overflow: hidden; }
+    .kds-ticket.paid { border-top-color: #15803d; }
+    .kds-ticket-head { display: flex; justify-content: space-between; gap: 10px; padding: 14px 14px 10px; border-bottom: 1px solid var(--border,#e2ddd4); }
+    .kds-order-no { font-size: 1.15rem; font-weight: 800; color: var(--text,#222); }
+    .kds-table { color: var(--text-muted,#777); font-weight: 700; margin-top: 2px; }
+    .kds-badge { align-self: flex-start; padding: 5px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; text-transform: uppercase; background: #fdf3d7; color: #9a6b00; white-space: nowrap; }
+    .kds-ticket.paid .kds-badge { background: #e7f6ec; color: #15803d; }
+    .kds-lines { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .kds-line { display: flex; justify-content: space-between; gap: 12px; font-size: 1rem; font-weight: 700; }
+    .kds-line.done { color: var(--text-muted,#888); text-decoration: line-through; }
+    .kds-empty { padding: 40px 16px; text-align: center; color: var(--text-muted,#888); border: 1px dashed var(--border,#d8d0c4); border-radius: 8px; background: var(--surface-alt,#f7f4ef); }
+    .kds-checkbox { width: 18px; height: 18px; cursor: pointer; margin-right: 8px; accent-color: #c8903e; }
+    .kds-line-content { display: flex; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="kds-shell">
+    <div class="kds-head">
+        <div>
+            <h1 class="kds-title">Kitchen Display</h1>
+            <p class="text-muted">Live order tickets for {{ cafe.name }}.</p>
+        </div>
+        <span class="kds-status offline" id="kds-connection">Connecting</span>
+    </div>
+    <div class="kds-board" id="kds-board">
+        <div class="kds-empty">Waiting for kitchen orders.</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const board = document.getElementById('kds-board');
+    const status = document.getElementById('kds-connection');
+    const orders = new Map();
+    let retryMs = 1000;
+    let socket = null;
+
+    function statusLabel(text, live) {
+        status.textContent = text;
+        status.classList.toggle('live', live);
+        status.classList.toggle('offline', !live);
+    }
+
+    function upsert(order) {
+        if (!order || !order.lines || !order.lines.length) {
+            return;
+        }
+        orders.set(String(order.id), order);
+        render();
+    }
+
+    function render() {
+        const list = Array.from(orders.values()).sort(function(a, b) {
+            return new Date(a.created_at) - new Date(b.created_at);
+        });
+        if (!list.length) {
+            board.innerHTML = '<div class="kds-empty">Waiting for kitchen orders.</div>';
+            return;
+        }
+        board.innerHTML = '';
+        list.forEach(function(order) {
+            const ticket = document.createElement('article');
+            ticket.className = 'kds-ticket ' + (order.status === 'paid' ? 'paid' : '');
+            ticket.innerHTML =
+                '<div class="kds-ticket-head">' +
+                    '<div><div class="kds-order-no">' + order.order_number + '</div>' +
+                    '<div class="kds-table">' + (order.table_number ? 'Table ' + order.table_number : 'No table') + '</div></div>' +
+                    '<span class="kds-badge">' + order.status.replaceAll('_', ' ') + '</span>' +
+                '</div>' +
+                '<div class="kds-lines">' +
+                    order.lines.map(function(line) {
+                        const done = line.kds_status === 'completed' ? ' done' : '';
+                        const checked = line.kds_status === 'completed' ? 'checked' : '';
+                        const indeterminate = line.kds_status === 'preparing' ? 'true' : 'false';
+                        return '<div class="kds-line' + done + '">' +
+                            '<div class="kds-line-content">' +
+                                '<input type="checkbox" class="kds-checkbox" data-order="' + order.id + '" data-line="' + line.id + '" data-status="' + line.kds_status + '" ' + checked + '>' +
+                                '<span>' + line.product_name + '</span>' +
+                            '</div>' +
+                            '<span>x' + line.quantity + '</span>' +
+                        '</div>';
+                    }).join('') +
+                '</div>';
+            board.appendChild(ticket);
+        });
+        
+        // Handle indeterminate checkboxes
+        document.querySelectorAll('.kds-checkbox').forEach(function(cb) {
+            if (cb.dataset.status === 'preparing') {
+                cb.indeterminate = true;
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    board.addEventListener('click', function(e) {
+        if (e.target.classList.contains('kds-checkbox')) {
+            e.preventDefault(); // prevent default toggle so we can control it via ws update
+            const orderId = e.target.dataset.order;
+            const lineId = e.target.dataset.line;
+            const currentStatus = e.target.dataset.status;
+            let nextStatus = 'to_cook';
+            
+            if (currentStatus === 'to_cook') {
+                nextStatus = 'preparing';
+            } else if (currentStatus === 'preparing') {
+                nextStatus = 'completed';
+            } else {
+                nextStatus = 'to_cook'; // Loop back if desired
+            }
+            
+            fetch('/pos/order/' + orderId + '/line/' + lineId + '/kds-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ kds_status: nextStatus })
+            }).then(response => response.json()).then(data => {
+                if(data.error) {
+                    console.error("Failed to update status:", data.error);
+                }
+            });
+        }
+    });
+
+    function connect() {
+        const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        socket = new WebSocket(scheme + '://' + window.location.host + '/ws/kds/');
+        socket.onopen = function() {
+            retryMs = 1000;
+            statusLabel('Live', true);
+        };
+        socket.onmessage = function(event) {
+            const payload = JSON.parse(event.data);
+            if (payload.event === 'snapshot') {
+                orders.clear();
+                payload.orders.forEach(upsert);
+                render();
+            } else if (payload.event === 'order_removed') {
+                orders.delete(String(payload.order.id));
+                render();
+            } else if (payload.order) {
+                upsert(payload.order);
+            }
+        };
+        socket.onclose = function() {
+            statusLabel('Reconnecting', false);
+            setTimeout(connect, retryMs);
+            retryMs = Math.min(retryMs * 2, 30000);
+        };
+        socket.onerror = function() {
+            socket.close();
+        };
+    }
+
+    connect();
+})();
+</script>
+{% endblock %}

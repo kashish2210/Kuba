@@ -59,8 +59,10 @@ def home(request):
     if getattr(request, "is_admin_host", False):
         return redirect("/admin/")
     if getattr(request, "cafe", None) is None:
-        # Public / marketing host. Login is subdomain-locked, so we never auto-jump
-        # a logged-in user to their cafe from here — they navigate to their own host.
+        if request.user.is_authenticated:
+            cafe = _user_cafe(request.user)
+            if cafe is not None:
+                return redirect(cafe.dashboard_url(request))
         return render(request, "landing.html")
     # Cashiers go straight to the POS terminal; admins/superusers get the admin panel.
     if request.user.is_authenticated and not request.user.is_superuser:
@@ -869,6 +871,11 @@ def receipt_test(request):
 # ─────────────────────────────────────────────────────────────────────────────
 # Placeholders for deferred POS modules
 # ─────────────────────────────────────────────────────────────────────────────
+@cafe_admin_required(require_admin=False)
+def kds_display(request):
+    return render(request, "dashboard/kds.html")
+
+
 @cafe_admin_required(require_admin=False)
 def coming_soon(request):
     label = {

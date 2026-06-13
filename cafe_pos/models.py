@@ -244,6 +244,7 @@ class Order(models.Model):
     class OrderStatus(models.TextChoices):
         DRAFT = "draft", "Draft"
         SENT_TO_KITCHEN = "sent_to_kitchen", "Sent to Kitchen"
+        READY = "ready", "Ready"
         PAID = "paid", "Paid"
         CANCELLED = "cancelled", "Cancelled"
 

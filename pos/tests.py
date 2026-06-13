@@ -1,6 +1,8 @@
 import json
 from decimal import Decimal
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -16,6 +18,8 @@ from cafe_pos.models import (
     Profile,
 )
 from tenants.models import Cafe
+
+from .kds import broadcast_order_to_kds, kds_group_name
 
 
 class OrderStartTableSwitchTests(TestCase):
@@ -111,3 +115,48 @@ class OrderStartTableSwitchTests(TestCase):
         self.assertEqual(order.table_id, self.table_1.id)
         self.assertEqual(response.json()["table_id"], self.table_2.id)
         self.assertEqual(Order.objects.filter(cafe=self.cafe).count(), 2)
+
+    def test_kds_broadcast_sends_visible_lines_only(self):
+        hidden_product = Product.objects.create(
+            cafe=self.cafe,
+            category=self.category,
+            name="Retail Beans",
+            price=Decimal("450.00"),
+            unit_of_measure=Product.UnitOfMeasure.PER_PACKET,
+            tax_percentage=Decimal("5.00"),
+            show_in_kds=False,
+        )
+        order = self.create_order(self.table_1)
+        order.status = Order.OrderStatus.SENT_TO_KITCHEN
+        order.save(update_fields=["status"])
+        OrderLineItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=2,
+            unit_price=self.product.price,
+            line_discount=0,
+            line_total=self.product.price * 2,
+        )
+        OrderLineItem.objects.create(
+            order=order,
+            product=hidden_product,
+            quantity=1,
+            unit_price=hidden_product.price,
+            line_discount=0,
+            line_total=hidden_product.price,
+        )
+
+        layer = get_channel_layer()
+        async_to_sync(layer.flush)()
+        channel_name = async_to_sync(layer.new_channel)()
+        async_to_sync(layer.group_add)(kds_group_name(self.cafe.id), channel_name)
+
+        broadcast_order_to_kds(order, event_type="new_order")
+
+        message = async_to_sync(layer.receive)(channel_name)
+        self.assertEqual(message["event"], "new_order")
+        self.assertEqual(message["order"]["id"], order.id)
+        self.assertEqual(
+            [line["product_name"] for line in message["order"]["lines"]],
+            ["Espresso"],
+        )

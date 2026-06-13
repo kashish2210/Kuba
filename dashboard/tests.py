@@ -8,6 +8,23 @@ from cafe_pos.models import CafeTable, Floor, Profile
 from tenants.models import Cafe
 
 
+class LandingRedirectTests(TestCase):
+    def test_authenticated_root_user_is_sent_to_their_cafe(self):
+        user = get_user_model().objects.create_user(
+            username="landing_admin",
+            email="landing-admin@example.com",
+            password="password",
+        )
+        cafe = Cafe.objects.create(name="Landing Cafe", subdomain="landingcafe", owner=user)
+        Profile.objects.create(user=user, cafe=cafe, role=Profile.Role.ADMIN)
+        self.client.login(username="landing_admin", password="password")
+
+        response = self.client.get("/", HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "http://landingcafe.localhost/")
+
+
 class TableMoveTests(TestCase):
     host = "tablemove.localhost"
 

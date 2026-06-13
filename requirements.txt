@@ -1,4 +1,6 @@
 django
+channels
+daphne
 pillow
 django-allauth
 django-jazzmin
