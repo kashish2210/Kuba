@@ -1,66 +1,367 @@
 {% extends "base.html" %}
 
-{% block title %}Coupons — {{ cafe.name }}{% endblock %}
-{% block breadcrumb %}Coupons{% endblock %}
+{% block title %}Coupon & Promotion — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Coupon & Promotion{% endblock %}
+
+{% block extra_css %}
+<style>
+.cp-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.cp-header h1 { flex:1; }
+.cp-search { position:relative; }
+.cp-search input { padding:7px 36px 7px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:0.875rem; background:var(--surface); color:var(--text); width:220px; }
+.cp-search svg { position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+
+.cp-type-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
+.cp-type-coupon { background:#fef3c7; color:#92400e; }
+.cp-type-promo { background:#dbeafe; color:#1e40af; }
+
+.cp-activate { display:inline-flex; align-items:center; cursor:pointer; }
+.cp-activate input { display:none; }
+.cp-toggle { width:36px; height:20px; border-radius:10px; background:var(--border); border:none; cursor:pointer; position:relative; transition:.2s; padding:0; }
+.cp-toggle::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.2s; }
+.cp-toggle.on { background:var(--primary); }
+.cp-toggle.on::after { left:18px; }
+
+/* Slide-in form panel */
+.cp-layout { display:grid; grid-template-columns:1fr; gap:20px; }
+.cp-layout.with-form { grid-template-columns:1fr 380px; }
+.cp-form-card { position:sticky; top:20px; }
+
+/* Form type tabs */
+.type-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:16px; }
+.type-tab { flex:1; padding:8px; text-align:center; font-size:0.875rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:.15s; }
+.type-tab.active { background:var(--primary); color:#fff; }
+
+.cp-section-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:14px 0 8px; }
+
+.cond-field { display:none; }
+.cond-field.show { display:block; }
+
+.discount-row { display:flex; gap:8px; }
+.discount-row input { flex:1; }
+.discount-row select { width:70px; flex-shrink:0; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:20px;">
-    <h1 class="page-title">Coupons</h1>
-    <p class="text-muted">Discount codes staff can apply at the POS.</p>
+
+<div class="cp-header">
+    <h1 class="page-title">Coupon &amp; Promotion</h1>
+    <div class="cp-search">
+        <input type="text" id="cp-search-input" placeholder="e.g: Summer Sale">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <a href="?new=1" class="btn btn-primary" id="btn-new-cp">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
+    </a>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+<div class="cp-layout {% if edit_coupon or edit_promo or request.GET.new %}with-form{% endif %}" id="cp-layout">
+
+    <!-- ── List ── -->
     <div class="card"><div class="card-body">
-        {% if coupons %}
-        <table class="data-table">
-            <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
-            <tbody>
-            {% for c in coupons %}
+        {% if coupon_list or promo_list %}
+        <table class="data-table" id="cp-table">
+            <thead>
                 <tr>
-                    <td><strong>{{ c.code }}</strong></td>
-                    <td>{{ c.get_discount_type_display }}</td>
-                    <td>{% if c.discount_type == 'percentage' %}{{ c.discount_value }}%{% else %}₹{{ c.discount_value }}{% endif %}</td>
-                    <td>{% if c.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-neutral">Inactive</span>{% endif %}</td>
-                    <td class="text-right">
-                        <a href="?edit={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
-                        <form method="post" action="{% url 'dashboard:coupon-delete' c.id %}" onsubmit="return confirm('Delete {{ c.code }}?');" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                        </form>
-                    </td>
+                    <th>Promotions Name</th>
+                    <th>Type</th>
+                    <th>Used (orders)</th>
+                    <th>Activate</th>
+                    <th></th>
                 </tr>
+            </thead>
+            <tbody>
+            {% for c in coupon_list %}
+            <tr data-name="{{ c.name|lower }} {{ c.code|lower }}">
+                <td>
+                    <strong>{{ c.name|default:c.code }}</strong>
+                    {% if c.name %}<div class="text-xs text-muted">{{ c.code }}</div>{% endif %}
+                </td>
+                <td><span class="cp-type-badge cp-type-coupon">Coupon</span></td>
+                <td>{{ c.orders.count }}</td>
+                <td>
+                    <form method="post" action="{% url 'dashboard:coupon-toggle' c.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="cp-toggle {% if c.is_active %}on{% endif %}" title="{% if c.is_active %}Deactivate{% else %}Activate{% endif %}"></button>
+                    </form>
+                </td>
+                <td style="white-space:nowrap;">
+                    <a href="?edit_coupon={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                    <form method="post" action="{% url 'dashboard:coupon-delete' c.id %}" onsubmit="return confirm('Delete {{ c.code }}?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% for p in promo_list %}
+            <tr data-name="{{ p.name|lower }}">
+                <td>
+                    <strong>{{ p.name }}</strong>
+                    <div class="text-xs text-muted">{{ p.get_apply_to_display }} — {% if p.apply_to == 'order' %}min ₹{{ p.min_order_amount }}{% else %}min qty {{ p.min_quantity }}{% endif %}</div>
+                </td>
+                <td><span class="cp-type-badge cp-type-promo">Automated Promo</span></td>
+                <td>{{ p.orders.count }}</td>
+                <td>
+                    <form method="post" action="{% url 'dashboard:promotion-toggle' p.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="cp-toggle {% if p.is_active %}on{% endif %}" title="{% if p.is_active %}Deactivate{% else %}Activate{% endif %}"></button>
+                    </form>
+                </td>
+                <td style="white-space:nowrap;">
+                    <a href="?edit_promo={{ p.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                    <form method="post" action="{% url 'dashboard:promotion-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-icon btn-ghost btn-sm" title="Delete">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                    </form>
+                </td>
+            </tr>
             {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div class="empty-state"><h3 class="empty-state-title">No coupons yet</h3><p class="empty-state-desc">Create one using the form on the right.</p></div>
+        <div class="empty-state">
+            <h3 class="empty-state-title">No coupons or promotions yet</h3>
+            <p class="empty-state-desc">Click "New" to create your first one.</p>
+        </div>
         {% endif %}
     </div></div>
 
-    <div class="card"><div class="card-body">
-        <h3 class="card-title" style="margin-bottom:12px;">{% if edit_instance %}Edit “{{ edit_instance.code }}”{% else %}New coupon{% endif %}</h3>
-        <form method="post" action="{% if edit_instance %}{% url 'dashboard:coupon-update' edit_instance.id %}{% else %}{% url 'dashboard:coupon-create' %}{% endif %}" class="dash-form">
+    <!-- ── Form panel ── -->
+    {% if edit_coupon or edit_promo or request.GET.new %}
+    <div class="card cp-form-card"><div class="card-body">
+
+        {% if edit_coupon %}
+            <h3 class="card-title" style="margin-bottom:12px;">Edit "{{ edit_coupon.code }}"</h3>
+            <form method="post" action="{% url 'dashboard:coupon-update' edit_coupon.id %}" class="dash-form" id="cp-form">
             {% csrf_token %}
+            <input type="hidden" id="form-type-hidden" value="coupon">
+        {% elif edit_promo %}
+            <h3 class="card-title" style="margin-bottom:12px;">Edit "{{ edit_promo.name }}"</h3>
+            <form method="post" action="{% url 'dashboard:promotion-update' edit_promo.id %}" class="dash-form" id="cp-form">
+            {% csrf_token %}
+            <input type="hidden" id="form-type-hidden" value="promo">
+        {% else %}
+            <h3 class="card-title" style="margin-bottom:12px;">New</h3>
+            <form method="post" action="" class="dash-form" id="cp-form">
+            {% csrf_token %}
+            <input type="hidden" id="form-type-hidden" value="coupon">
+        {% endif %}
+
+        <!-- Type switcher (only on create) -->
+        {% if not edit_coupon and not edit_promo %}
+        <div class="type-tabs" id="type-tabs">
+            <button type="button" class="type-tab active" data-type="coupon">Coupon</button>
+            <button type="button" class="type-tab" data-type="promo">Promotion</button>
+        </div>
+        {% endif %}
+
+        <!-- Common: Name -->
+        <div class="form-group">
+            <label class="form-label">Name</label>
+            {% if edit_coupon %}
+                {{ coupon_form.name }}
+            {% elif edit_promo %}
+                {{ promo_form.name }}
+            {% else %}
+                <input type="text" name="name" class="form-input" placeholder="e.g. Summer Sale" value="{{ coupon_form.name.value|default:'' }}">
+            {% endif %}
+        </div>
+
+        <!-- ── COUPON fields ── -->
+        <div id="coupon-fields" class="cond-field {% if not edit_promo %}show{% endif %}">
+            <div class="cp-section-label">Coupon code</div>
             <div class="form-group">
                 <label class="form-label">Code</label>
-                {{ form.code }}
+                {% if edit_coupon %}
+                    {{ coupon_form.code }}
+                {% else %}
+                    <input type="text" name="code" class="form-input" placeholder="e.g. SUMMER20" style="text-transform:uppercase;">
+                {% endif %}
             </div>
+            <div class="cp-section-label">Redeem</div>
             <div class="form-group">
-                <label class="form-label">Discount type</label>
-                {{ form.discount_type }}
+                <label class="form-label">Discount</label>
+                <div class="discount-row">
+                    {% if edit_coupon %}
+                        {{ coupon_form.discount_value }}
+                        {{ coupon_form.discount_type }}
+                    {% else %}
+                        <input type="number" name="discount_value" class="form-input" placeholder="0" min="0.01" step="0.01">
+                        <select name="discount_type" class="form-select">
+                            <option value="percentage">%</option>
+                            <option value="fixed">₹</option>
+                        </select>
+                    {% endif %}
+                </div>
             </div>
+        </div>
+
+        <!-- ── PROMOTION fields ── -->
+        <div id="promo-fields" class="cond-field {% if edit_promo %}show{% endif %}">
+            <div class="cp-section-label">Apply</div>
             <div class="form-group">
-                <label class="form-label">Value <span class="text-xs text-muted">(% or ₹ amount)</span></label>
-                {{ form.discount_value }}
+                <label class="form-label">Apply to</label>
+                {% if edit_promo %}
+                    {{ promo_form.apply_to }}
+                {% else %}
+                    <select name="apply_to" class="form-select" id="apply-to-select">
+                        <option value="order">Order</option>
+                        <option value="product">Product</option>
+                    </select>
+                {% endif %}
             </div>
-            <label class="form-label" style="display:flex;gap:8px;align-items:center;">
-                {{ form.is_active }} Active
-            </label>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-                <button type="submit" class="btn btn-primary">{% if edit_instance %}Save{% else %}Create{% endif %}</button>
-                {% if edit_instance %}<a href="{% url 'dashboard:coupons' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+
+            <!-- Order condition -->
+            <div id="order-cond" class="cond-field {% if not edit_promo or edit_promo.apply_to == 'order' %}show{% endif %}">
+                <div class="form-group">
+                    <label class="form-label">Min. order amount (₹)</label>
+                    {% if edit_promo %}
+                        {{ promo_form.min_order_amount }}
+                    {% else %}
+                        <input type="number" name="min_order_amount" class="form-input" placeholder="500" min="0" step="0.01">
+                    {% endif %}
+                </div>
             </div>
+
+            <!-- Product condition -->
+            <div id="product-cond" class="cond-field {% if edit_promo and edit_promo.apply_to == 'product' %}show{% endif %}">
+                <div class="form-group">
+                    <label class="form-label">Product</label>
+                    {% if edit_promo %}
+                        {{ promo_form.product }}
+                    {% else %}
+                        <select name="product" class="form-select">
+                            <option value="">— select —</option>
+                            {% for prod in products %}
+                            <option value="{{ prod.id }}">{{ prod.name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Min. quantity</label>
+                    {% if edit_promo %}
+                        {{ promo_form.min_quantity }}
+                    {% else %}
+                        <input type="number" name="min_quantity" class="form-input" placeholder="5" min="1">
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cp-section-label">Redeem</div>
+            <div class="form-group">
+                <label class="form-label">Discount</label>
+                <div class="discount-row">
+                    {% if edit_promo %}
+                        {{ promo_form.discount_value }}
+                        {{ promo_form.discount_type }}
+                    {% else %}
+                        <input type="number" name="discount_value" class="form-input" placeholder="0" min="0.01" step="0.01">
+                        <select name="discount_type" class="form-select">
+                            <option value="percentage">%</option>
+                            <option value="fixed">₹</option>
+                        </select>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active toggle -->
+        <label class="form-label" style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+            {% if edit_coupon %}{{ coupon_form.is_active }}{% elif edit_promo %}{{ promo_form.is_active }}{% else %}<input type="checkbox" name="is_active" checked>{% endif %}
+            Active
+        </label>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
+            <button type="submit" class="btn btn-primary">{% if edit_coupon or edit_promo %}Save{% else %}Create{% endif %}</button>
+            <a href="{% url 'dashboard:coupons' %}" class="btn btn-ghost">Cancel</a>
+        </div>
         </form>
     </div></div>
-</div>
+    {% endif %}
+
+</div><!-- /cp-layout -->
+
+<script>
+(function () {
+    /* ── search ── */
+    var searchInput = document.getElementById("cp-search-input");
+    if (searchInput) {
+        searchInput.addEventListener("input", function () {
+            var q = this.value.toLowerCase();
+            document.querySelectorAll("#cp-table tbody tr").forEach(function (row) {
+                row.hidden = q && !row.dataset.name.includes(q);
+            });
+        });
+    }
+
+    /* ── new form: wire up type tabs ── */
+    var tabs = document.querySelectorAll(".type-tab");
+    var formAction = document.getElementById("cp-form");
+    var typeHidden = document.getElementById("form-type-hidden");
+    var couponFields = document.getElementById("coupon-fields");
+    var promoFields = document.getElementById("promo-fields");
+
+    function setFieldsDisabled(container, disabled) {
+        if (!container) return;
+        container.querySelectorAll("input, select, textarea").forEach(function (el) {
+            el.disabled = disabled;
+        });
+    }
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+            tabs.forEach(function (t) { t.classList.remove("active"); });
+            tab.classList.add("active");
+            var type = tab.dataset.type;
+            typeHidden.value = type;
+            if (type === "coupon") {
+                couponFields && couponFields.classList.add("show");
+                promoFields && promoFields.classList.remove("show");
+                setFieldsDisabled(couponFields, false);
+                setFieldsDisabled(promoFields, true);
+                if (formAction) formAction.action = "{% url 'dashboard:coupon-create' %}";
+            } else {
+                couponFields && couponFields.classList.remove("show");
+                promoFields && promoFields.classList.add("show");
+                setFieldsDisabled(couponFields, true);
+                setFieldsDisabled(promoFields, false);
+                if (formAction) formAction.action = "{% url 'dashboard:promotion-create' %}";
+            }
+        });
+    });
+
+    /* init: disable promo fields by default on create form */
+    if (tabs.length > 0) {
+        setFieldsDisabled(promoFields, true);
+    }
+
+    /* ── promotion: apply_to toggle ── */
+    var applySelect = document.getElementById("apply-to-select");
+    var orderCond = document.getElementById("order-cond");
+    var productCond = document.getElementById("product-cond");
+    {% if edit_promo %}
+    var applySelect = document.querySelector("select[name='apply_to']");
+    {% endif %}
+
+    function updateApplyCond() {
+        if (!applySelect) return;
+        var val = applySelect.value;
+        if (orderCond) orderCond.classList.toggle("show", val === "order");
+        if (productCond) productCond.classList.toggle("show", val === "product");
+    }
+
+    if (applySelect) {
+        applySelect.addEventListener("change", updateApplyCond);
+        updateApplyCond();
+    }
+})();
+</script>
 {% endblock %}

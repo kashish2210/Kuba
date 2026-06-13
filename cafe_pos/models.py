@@ -137,6 +137,7 @@ class Coupon(models.Model):
         FIXED = "fixed", "Fixed"
 
     cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="coupons")
+    name = models.CharField(max_length=150, blank=True)
     code = models.CharField(max_length=50)
     discount_type = models.CharField(max_length=20, choices=DiscountType.choices)
     discount_value = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])

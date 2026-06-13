@@ -22,6 +22,7 @@ from cafe_pos.models import (
     Product,
     ProductCategory,
     Profile,
+    Promotion,
     ReceiptSettings,
 )
 from tenants.models import AuditLog
@@ -35,6 +36,7 @@ from .forms import (
     FloorForm,
     PaymentSettingsForm,
     ProductForm,
+    PromotionForm,
     ReceiptSettingsForm,
     SetPasswordForm,
     TableForm,
@@ -535,17 +537,30 @@ def category_delete(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Coupons
+# Coupons & Promotions
 # ─────────────────────────────────────────────────────────────────────────────
 @cafe_admin_required
 def coupons(request):
     cafe = request.cafe
-    edit_id = request.GET.get("edit")
-    instance = get_object_or_404(Coupon, pk=edit_id, cafe=cafe) if edit_id else None
+    edit_coupon_id = request.GET.get("edit_coupon")
+    edit_promo_id = request.GET.get("edit_promo")
+    coupon_instance = get_object_or_404(Coupon, pk=edit_coupon_id, cafe=cafe) if edit_coupon_id else None
+    promo_instance = get_object_or_404(Promotion, pk=edit_promo_id, cafe=cafe) if edit_promo_id else None
+
+    coupon_list = Coupon.objects.filter(cafe=cafe).order_by("code")
+    promo_list = Promotion.objects.filter(cafe=cafe).order_by("name")
+
+    coupon_form = CouponForm(instance=coupon_instance, cafe=cafe)
+    promo_form = PromotionForm(instance=promo_instance, cafe=cafe)
+
     return render(request, "dashboard/coupons.html", {
-        "coupons": Coupon.objects.filter(cafe=cafe).order_by("code"),
-        "form": CouponForm(instance=instance, cafe=cafe),
-        "edit_instance": instance,
+        "coupon_list": coupon_list,
+        "promo_list": promo_list,
+        "coupon_form": coupon_form,
+        "promo_form": promo_form,
+        "edit_coupon": coupon_instance,
+        "edit_promo": promo_instance,
+        "products": Product.objects.filter(cafe=cafe, is_active=True),
     })
 
 
@@ -590,6 +605,73 @@ def coupon_delete(request, pk):
     log_action("delete", cafe=request.cafe, request=request, target=None,
                message=f"Deleted coupon '{code}'.")
     messages.success(request, f"Coupon '{code}' deleted.")
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def coupon_toggle(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk, cafe=request.cafe)
+    coupon.is_active = not coupon.is_active
+    coupon.save(update_fields=["is_active"])
+    log_action("update", cafe=request.cafe, request=request, target=coupon,
+               message=f"Toggled coupon '{coupon.code}' {'active' if coupon.is_active else 'inactive'}.")
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def promotion_create(request):
+    form = PromotionForm(request.POST, cafe=request.cafe)
+    if form.is_valid():
+        promo = form.save(commit=False)
+        promo.cafe = request.cafe
+        promo.save()
+        log_action("create", cafe=request.cafe, request=request, target=promo,
+                   message=f"Created promotion '{promo.name}'.")
+        messages.success(request, f"Promotion '{promo.name}' created.")
+    else:
+        messages.error(request, "Could not create promotion: " + "; ".join(
+            f"{k}: {', '.join(v)}" for k, v in form.errors.items()))
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def promotion_update(request, pk):
+    promo = get_object_or_404(Promotion, pk=pk, cafe=request.cafe)
+    form = PromotionForm(request.POST, instance=promo, cafe=request.cafe)
+    if form.is_valid():
+        form.save()
+        log_action("update", cafe=request.cafe, request=request, target=promo,
+                   message=f"Updated promotion '{promo.name}'.")
+        messages.success(request, "Promotion updated.")
+    else:
+        messages.error(request, "Could not update promotion: " + "; ".join(
+            f"{k}: {', '.join(v)}" for k, v in form.errors.items()))
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def promotion_delete(request, pk):
+    promo = get_object_or_404(Promotion, pk=pk, cafe=request.cafe)
+    name = promo.name
+    promo.delete()
+    log_action("delete", cafe=request.cafe, request=request, target=None,
+               message=f"Deleted promotion '{name}'.")
+    messages.success(request, f"Promotion '{name}' deleted.")
+    return redirect("dashboard:coupons")
+
+
+@cafe_admin_required
+@require_POST
+def promotion_toggle(request, pk):
+    promo = get_object_or_404(Promotion, pk=pk, cafe=request.cafe)
+    promo.is_active = not promo.is_active
+    promo.save(update_fields=["is_active"])
+    log_action("update", cafe=request.cafe, request=request, target=promo,
+               message=f"Toggled promotion '{promo.name}' {'active' if promo.is_active else 'inactive'}.")
     return redirect("dashboard:coupons")
 
 

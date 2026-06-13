@@ -184,34 +184,61 @@
 
     $("btn-discount").addEventListener("click", function () {
       if (!order) { openFloor(); toast("Select a table first"); return; }
-      
+
       var modal = $("prompt-modal");
       $("prompt-title").textContent = "Apply Discount";
       var body = $("prompt-body");
-      
-      var html = '<div class="prompt-field"><label>Manual Discount Amount (₹)</label><input id="disc-amount" type="number" placeholder="0"></div>';
-      html += '<div style="margin: 10px 0; text-align: center; color: var(--muted); font-size: 0.85rem; font-weight: bold;">-- OR --</div>';
-      html += '<div class="prompt-field"><label>Select or Enter Coupon Code</label>';
-      html += '<input id="disc-coupon" type="text" list="available-coupons" placeholder="Select from list or type code" style="text-transform: uppercase;" autocomplete="off">';
-      if (window.POS.coupons && window.POS.coupons.length > 0) {
-          html += '<datalist id="available-coupons">';
-          window.POS.coupons.forEach(function(c) {
-              var label = c.value + (c.type === "percentage" ? "%" : "₹") + ' OFF';
-              html += '<option value="' + c.code + '">' + label + '</option>';
-          });
-          html += '</datalist>';
-      }
+
+      var html = '<div class="prompt-field"><label style="font-weight:600;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Coupon Code</label>';
+      html += '<input id="disc-coupon" type="text" class="form-input" placeholder="Enter Coupon Code" style="text-transform:uppercase;margin-top:6px;" autocomplete="off">';
       html += '</div>';
-      
+
+      var promos = window.POS.promotions || [];
+      if (promos.length > 0) {
+        html += '<div style="margin:12px 0 8px;font-weight:600;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Automated Promotions</div>';
+        html += '<div id="disc-promo-list" style="display:flex;flex-direction:column;gap:6px;">';
+        promos.forEach(function (p) {
+          var desc = p.discount_value + (p.discount_type === "percentage" ? "%" : "₹") + " Discount";
+          var cond = p.apply_to === "order"
+            ? "Orders ≥ ₹" + p.min_order_amount
+            : "Min " + p.min_quantity + "× " + (p.product_name || "product");
+          html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" class="disc-promo-row">';
+          html += '<input type="radio" name="disc-promo" value="' + p.id + '" style="accent-color:var(--primary);">';
+          html += '<span><strong>' + desc + '</strong><br><span style="font-size:0.78rem;color:var(--muted);">' + cond + '</span></span>';
+          html += '</label>';
+        });
+        html += '</div>';
+      }
+
+      html += '<div style="margin:12px 0 8px;font-weight:600;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Manual Amount (₹)</div>';
+      html += '<input id="disc-amount" type="number" class="form-input" placeholder="0" min="0" style="margin-bottom:14px;">';
       html += '<button class="pay-confirm" id="prompt-ok">Enter</button>';
+
       body.innerHTML = html;
       modal.hidden = false;
-      
+
+      /* clear promo selection when coupon or manual amount is typed */
+      body.querySelector("#disc-coupon").addEventListener("input", function () {
+        if (this.value) body.querySelectorAll("input[name='disc-promo']").forEach(function (r) { r.checked = false; });
+      });
+      body.querySelector("#disc-amount").addEventListener("input", function () {
+        if (this.value) body.querySelectorAll("input[name='disc-promo']").forEach(function (r) { r.checked = false; });
+      });
+
       $("prompt-ok").onclick = function () {
-        var amt = document.getElementById("disc-amount").value;
-        var cpn = document.getElementById("disc-coupon").value.trim();
+        var cpn = body.querySelector("#disc-coupon").value.trim();
+        var amt = body.querySelector("#disc-amount").value;
+        var promoRadio = body.querySelector("input[name='disc-promo']:checked");
         modal.hidden = true;
-        api(orderUrl("discount/"), "POST", { amount: amt || 0, coupon_code: cpn }).then(setOrder).catch(showErr);
+        var payload = {};
+        if (cpn) {
+          payload.coupon_code = cpn;
+        } else if (promoRadio) {
+          payload.promotion_id = parseInt(promoRadio.value, 10);
+        } else {
+          payload.amount = amt || 0;
+        }
+        api(orderUrl("discount/"), "POST", payload).then(setOrder).catch(showErr);
       };
     });
 

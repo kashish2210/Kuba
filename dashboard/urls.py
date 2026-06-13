@@ -33,11 +33,16 @@ urlpatterns = [
     path("team/<int:pk>/archive/", views.user_archive, name="user-archive"),
     path("team/<int:pk>/password/", views.user_password, name="user-password"),
 
-    # Coupons
+    # Coupons & Promotions
     path("coupons/", views.coupons, name="coupons"),
     path("coupons/add/", views.coupon_create, name="coupon-create"),
     path("coupons/<int:pk>/edit/", views.coupon_update, name="coupon-update"),
     path("coupons/<int:pk>/delete/", views.coupon_delete, name="coupon-delete"),
+    path("coupons/<int:pk>/toggle/", views.coupon_toggle, name="coupon-toggle"),
+    path("promotions/add/", views.promotion_create, name="promotion-create"),
+    path("promotions/<int:pk>/edit/", views.promotion_update, name="promotion-update"),
+    path("promotions/<int:pk>/delete/", views.promotion_delete, name="promotion-delete"),
+    path("promotions/<int:pk>/toggle/", views.promotion_toggle, name="promotion-toggle"),
 
     # Payment settings
     path("payment-methods/", views.payment_settings, name="payment-methods"),

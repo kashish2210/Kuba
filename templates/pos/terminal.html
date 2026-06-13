@@ -229,6 +229,20 @@ window.POS = {
         {% for c in coupons %}
         { id: {{ c.id }}, code: "{{ c.code|escapejs }}", type: "{{ c.discount_type }}", value: {{ c.discount_value }} },
         {% endfor %}
+    ],
+    promotions: [
+        {% for p in promotions %}
+        {
+            id: {{ p.id }},
+            name: "{{ p.name|escapejs }}",
+            apply_to: "{{ p.apply_to }}",
+            discount_type: "{{ p.discount_type }}",
+            discount_value: {{ p.discount_value }},
+            min_order_amount: {% if p.min_order_amount %}{{ p.min_order_amount }}{% else %}null{% endif %},
+            min_quantity: {% if p.min_quantity %}{{ p.min_quantity }}{% else %}null{% endif %},
+            product_name: "{% if p.product %}{{ p.product.name|escapejs }}{% endif %}"
+        },
+        {% endfor %}
     ]
 };
 </script>

@@ -11,6 +11,7 @@ from cafe_pos.models import (
     Product,
     ProductCategory,
     Profile,
+    Promotion,
     ReceiptSettings,
 )
 from tenants.models import Cafe
@@ -75,7 +76,7 @@ class ProductForm(StyledFormMixin, forms.ModelForm):
 class CouponForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Coupon
-        fields = ["code", "discount_type", "discount_value", "is_active"]
+        fields = ["name", "code", "discount_type", "discount_value", "is_active"]
 
     def __init__(self, *args, cafe=None, **kwargs):
         self._cafe = cafe
@@ -90,6 +91,41 @@ class CouponForm(StyledFormMixin, forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("A coupon with that code already exists.")
         return code
+
+
+class PromotionForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Promotion
+        fields = ["name", "apply_to", "product", "min_quantity", "min_order_amount", "discount_type", "discount_value", "is_active"]
+        widgets = {
+            "min_order_amount": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "min_quantity": forms.NumberInput(attrs={"min": "1"}),
+        }
+
+    def __init__(self, *args, cafe=None, **kwargs):
+        self._cafe = cafe
+        super().__init__(*args, **kwargs)
+        if cafe is not None:
+            self.fields["product"].queryset = Product.objects.filter(cafe=cafe, is_active=True)
+        self.fields["product"].required = False
+        self.fields["min_quantity"].required = False
+        self.fields["min_order_amount"].required = False
+
+    def clean(self):
+        cd = super().clean()
+        apply_to = cd.get("apply_to")
+        if apply_to == Promotion.ApplyTo.PRODUCT:
+            if not cd.get("product"):
+                self.add_error("product", "Required for product-based promotions.")
+            if not cd.get("min_quantity"):
+                self.add_error("min_quantity", "Required for product-based promotions.")
+            cd["min_order_amount"] = None
+        elif apply_to == Promotion.ApplyTo.ORDER:
+            if not cd.get("min_order_amount"):
+                self.add_error("min_order_amount", "Required for order-based promotions.")
+            cd["product"] = None
+            cd["min_quantity"] = None
+        return cd
 
 
 class EmployeeForm(StyledFormMixin, forms.Form):

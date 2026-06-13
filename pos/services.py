@@ -100,7 +100,12 @@ def order_json(order):
         "subtotal": float(order.subtotal),
         "tax_amount": float(order.tax_amount),
         "discount_amount": float(order.discount_amount or 0),
-        "coupon_desc": f"{float(order.coupon.discount_value):g}%" if order.coupon_id and order.coupon.discount_type == "percentage" else "",
+        "coupon_desc": (
+            f"{float(order.coupon.discount_value):g}%" if order.coupon_id and order.coupon.discount_type == "percentage"
+            else f"{float(order.promotion.discount_value):g}%" if order.promotion_id and order.promotion.discount_type == "percentage"
+            else order.promotion.name if order.promotion_id
+            else ""
+        ),
         "total": float(order.total),
         "created_at": order.created_at.strftime("%d/%m %H:%M"),
     }

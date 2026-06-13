@@ -21,6 +21,7 @@ from cafe_pos.models import (
     ProductCategory,
     PaymentSettings,
     Coupon,
+    Promotion,
 )
 from dashboard.mixins import cafe_admin_required
 from tenants.utils import log_action
@@ -80,6 +81,7 @@ def terminal(request):
         ),
         "payment_settings": PaymentSettings.objects.filter(cafe=cafe).first(),
         "coupons": Coupon.objects.filter(cafe=cafe, is_active=True),
+        "promotions": Promotion.objects.filter(cafe=cafe, is_active=True).select_related("product"),
     }
     return render(request, "pos/terminal.html", context)
 
@@ -284,28 +286,55 @@ def order_discount(request, pk):
     if (resp := _editable_or_400(order)):
         return resp
     data = _data(request)
-    coupon_code = data.get("coupon_code")
-    
+    coupon_code = data.get("coupon_code", "").strip()
+    promotion_id = data.get("promotion_id")
+
+    order.coupon = None
+    order.promotion = None
+    order.discount_amount = Decimal("0")
+    services.recalc_order(order)
+
     if coupon_code:
         coupon = Coupon.objects.filter(cafe=request.cafe, code__iexact=coupon_code, is_active=True).first()
         if not coupon:
             return JsonResponse({"error": f"Invalid or expired coupon: {coupon_code}"}, status=400)
         order.coupon = coupon
-        order.discount_amount = Decimal("0") # temp clear to calc subtotal
-        services.recalc_order(order)
         if coupon.discount_type == Coupon.DiscountType.PERCENTAGE:
             amount = order.subtotal * (coupon.discount_value / Decimal("100"))
         else:
             amount = coupon.discount_value
+
+    elif promotion_id:
+        promo = Promotion.objects.filter(cafe=request.cafe, pk=promotion_id, is_active=True).first()
+        if not promo:
+            return JsonResponse({"error": "Promotion not found or inactive."}, status=400)
+        if promo.apply_to == Promotion.ApplyTo.ORDER:
+            if order.subtotal < (promo.min_order_amount or Decimal("0")):
+                return JsonResponse(
+                    {"error": f"Order total must be at least ₹{promo.min_order_amount} for this promotion."},
+                    status=400,
+                )
+        elif promo.apply_to == Promotion.ApplyTo.PRODUCT:
+            qty = sum(
+                li.quantity for li in order.line_items.all() if li.product_id == promo.product_id
+            )
+            if qty < (promo.min_quantity or 1):
+                return JsonResponse(
+                    {"error": f"Need at least {promo.min_quantity}× {promo.product.name} for this promotion."},
+                    status=400,
+                )
+        order.promotion = promo
+        if promo.discount_type == Promotion.DiscountType.PERCENTAGE:
+            amount = order.subtotal * (promo.discount_value / Decimal("100"))
+        else:
+            amount = promo.discount_value
+
     else:
-        order.coupon = None
         amount = _decimal(data.get("amount"))
 
-    if amount < 0:
-        amount = Decimal("0")
-        
+    amount = max(amount, Decimal("0"))
     order.discount_amount = amount
-    order.save(update_fields=["discount_amount", "coupon"])
+    order.save(update_fields=["discount_amount", "coupon", "promotion"])
     services.recalc_order(order)
     return JsonResponse(services.order_json(order))
 
