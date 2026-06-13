@@ -10,7 +10,8 @@ urlpatterns = [
     path("session/close/", views.session_close, name="session-close"),
     path("tables/", views.tables, name="tables"),
 
-    path("orders/", views.orders, name="orders"),
+    path("orders/", views.orders_page, name="orders"),
+    path("orders/data/", views.orders_data, name="orders-data"),
     path("order/start/", views.order_start, name="order-start"),
     path("order/<int:pk>/", views.order_detail, name="order-detail"),
     path("order/<int:pk>/line/", views.order_add_line, name="order-add-line"),
@@ -20,4 +21,5 @@ urlpatterns = [
     path("order/<int:pk>/send-kitchen/", views.order_send_kitchen, name="order-send-kitchen"),
     path("order/<int:pk>/pay/", views.order_pay, name="order-pay"),
     path("order/<int:pk>/upi-qr/", views.order_upi_qr, name="order-upi-qr"),
+    path("order/<int:pk>/cancel/", views.order_cancel, name="order-cancel"),
 ]

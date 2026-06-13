@@ -162,14 +162,14 @@
     });
 
     $("btn-discount").addEventListener("click", function () {
-      if (!order) return;
+      if (!order) { openFloor(); toast("Select a table first"); return; }
       promptModal("Apply discount", [{ name: "amount", label: "Discount amount (₹)", type: "number" }], function (vals) {
         api(orderUrl("discount/"), "POST", { amount: vals.amount || 0 }).then(setOrder).catch(showErr);
       });
     });
 
     $("btn-customer").addEventListener("click", function () {
-      if (!order) return;
+      if (!order) { openFloor(); toast("Select a table first"); return; }
       promptModal("Assign customer", [
         { name: "name", label: "Name", type: "text" },
         { name: "phone", label: "Phone (optional)", type: "text" },
@@ -220,69 +220,6 @@
         });
         gridEl.appendChild(cell);
       });
-    }
-
-    // ── Orders (current session) ──────────────────────────────────────────────
-    var ordersBtn = $("orders-btn");
-    if (ordersBtn) ordersBtn.addEventListener("click", openOrders);
-    $("orders-close").addEventListener("click", function () { $("orders-modal").hidden = true; });
-
-    function statusBadge(s) {
-      var map = {
-        draft: ["Draft", "#9a6b00", "#fdf3d7"],
-        sent_to_kitchen: ["Sent", "#0d7a4a", "#e3f6ec"],
-        paid: ["Paid", "#15803d", "#e7f6ec"],
-        cancelled: ["Cancelled", "#b91c1c", "#fbeaea"],
-      };
-      var m = map[s] || [s, "#555", "#eee"];
-      return '<span class="ord-badge" style="color:' + m[1] + ';background:' + m[2] + '">' + m[0] + "</span>";
-    }
-
-    function openOrders() {
-      var modal = $("orders-modal");
-      modal.hidden = false;
-      $("orders-detail").hidden = true;
-      var list = $("orders-list");
-      list.hidden = false;
-      list.innerHTML = '<p class="pos-empty">Loading…</p>';
-      api(U.orders).then(function (d) {
-        if (!d.orders.length) { list.innerHTML = '<p class="pos-empty">No orders in this session yet.</p>'; return; }
-        list.innerHTML = "";
-        d.orders.forEach(function (o) {
-          var row = document.createElement("button");
-          row.className = "ord-row";
-          row.innerHTML =
-            '<span class="ord-no">' + o.number + "</span>" +
-            '<span class="ord-meta">' + (o.table ? "Table " + o.table : "—") + " · " + o.time + "</span>" +
-            '<span class="ord-total">' + money(o.total) + "</span>" + statusBadge(o.status);
-          row.addEventListener("click", function () { openOrder(o); });
-          list.appendChild(row);
-        });
-      }).catch(showErr);
-    }
-
-    function openOrder(o) {
-      if (o.status === "draft" || o.status === "sent_to_kitchen") {
-        api(U.orderRoot + o.id + "/").then(function (data) {
-          setOrder(data);
-          $("orders-modal").hidden = true;
-          toast("Reopened " + o.number);
-        }).catch(showErr);
-      } else {
-        api(U.orderRoot + o.id + "/").then(function (data) {
-          var box = $("orders-detail");
-          $("orders-list").hidden = true;
-          box.hidden = false;
-          box.innerHTML =
-            '<button class="ord-back" id="ord-back">← Back</button>' +
-            "<h3 style='margin:10px 0;'>" + data.order_number + " " + statusBadge(data.status) + "</h3>" +
-            '<div class="ord-lines">' + data.lines.map(function (l) {
-              return '<div class="ord-line"><span>' + l.quantity + "× " + l.name + "</span><span>" + money(l.line_total) + "</span></div>";
-            }).join("") + "</div>" +
-            '<div class="ord-line ord-sum"><span>Total</span><span>' + money(data.total) + "</span></div>";
-          $("ord-back").addEventListener("click", openOrders);
-        }).catch(showErr);
-      }
     }
 
     // ── Payment ───────────────────────────────────────────────────────────────
@@ -384,7 +321,17 @@
 
     function showErr(err) { toast((err && err.error) || "Something went wrong"); }
 
-    // Open the floor popup on first load so staff pick a table.
-    openFloor();
+    // If redirected from the orders page with ?order=<id>, load that order directly.
+    var _params = new URLSearchParams(window.location.search);
+    var _editId = _params.get("order");
+    if (_editId) {
+      api(U.orderRoot + _editId + "/").then(function (data) {
+        setOrder(data);
+        toast("Editing " + data.order_number);
+      }).catch(openFloor);
+    } else {
+      // Open the floor popup on first load so staff pick a table.
+      openFloor();
+    }
   });
 })();

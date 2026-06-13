@@ -166,21 +166,35 @@ def order_detail(request, pk):
 
 
 @cafe_admin_required(require_admin=False)
-def orders(request):
-    """Orders in the current session — the cashier's working list."""
+def orders_page(request):
+    """Full orders management page."""
+    cafe = request.cafe
+    session = services.current_session(cafe)
+    return render(request, "pos/orders.html", {
+        "session": session,
+        "is_admin": request.user.is_superuser or (
+            getattr(request.user, "profile", None) and request.user.profile.role == "admin"
+        ),
+    })
+
+
+@cafe_admin_required(require_admin=False)
+def orders_data(request):
+    """JSON — orders in the current session for the orders page."""
     cafe = request.cafe
     session = services.current_session(cafe)
     qs = Order.objects.filter(cafe=cafe)
     if session is not None:
         qs = qs.filter(session=session)
-    qs = qs.select_related("table").order_by("-created_at")[:60]
+    qs = qs.select_related("table", "customer").order_by("-created_at")[:100]
     data = [{
         "id": o.id,
         "number": o.order_number,
         "table": o.table.table_number if o.table_id else None,
         "total": float(o.total),
         "status": o.status,
-        "time": o.created_at.strftime("%H:%M"),
+        "date": o.created_at.strftime("%d/%m %H:%M"),
+        "customer": o.customer.name if o.customer_id else None,
     } for o in qs]
     return JsonResponse({"orders": data})
 
@@ -345,3 +359,17 @@ def order_upi_qr(request, pk):
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return HttpResponse(buf.getvalue(), content_type="image/png")
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def order_cancel(request, pk):
+    """Cancel (soft-delete) a draft order."""
+    order = _get_order(request, pk)
+    if order.status != Order.OrderStatus.DRAFT:
+        return JsonResponse({"error": "Only draft orders can be cancelled."}, status=400)
+    order.status = Order.OrderStatus.CANCELLED
+    order.save(update_fields=["status"])
+    log_action("delete", cafe=request.cafe, request=request, target=order,
+               message=f"Cancelled order {order.order_number}.")
+    return JsonResponse({"ok": True, "order_number": order.order_number})

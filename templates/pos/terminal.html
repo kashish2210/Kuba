@@ -24,7 +24,6 @@
                 <p class="pos-empty">No products yet. Add some in the admin dashboard.</p>
             {% endfor %}
         </div>
-        <div class="pos-panel-label">Product</div>
     </section>
 
     <!-- ───────── Cart panel ───────── -->
@@ -52,7 +51,6 @@
             <div class="cs-row" id="cs-discount-row" hidden><span>Discount</span><span id="sum-discount">₹0.00</span></div>
             <div class="cs-row cs-total"><span>Total</span><span id="sum-total">₹0.00</span></div>
         </div>
-        <div class="pos-panel-label">Cart</div>
     </section>
 
     <!-- ───────── Payment panel ───────── -->
@@ -86,7 +84,6 @@
         </div>
 
         <button class="pay-confirm" id="btn-pay">Pay</button>
-        <div class="pos-panel-label">Payment</div>
     </section>
 </div>
 
@@ -110,17 +107,7 @@
     </div>
 </div>
 
-<!-- Orders (current session) modal -->
-<div class="pos-modal" id="orders-modal" hidden>
-    <div class="pos-modal-card">
-        <div class="pos-modal-head">
-            <h3>Orders this session</h3>
-            <button class="pos-modal-close" id="orders-close">✕</button>
-        </div>
-        <div id="orders-list"></div>
-        <div id="orders-detail" hidden></div>
-    </div>
-</div>
+
 
 <!-- Receipt modal -->
 <div class="pos-modal" id="receipt-modal" hidden>
@@ -135,9 +122,9 @@
 window.POS = {
     urls: {
         tables: "{% url 'pos:tables' %}",
-        orders: "{% url 'pos:orders' %}",
         orderStart: "{% url 'pos:order-start' %}",
         orderRoot: "/pos/order/",
+        ordersPage: "{% url 'pos:orders' %}",
     }
 };
 </script>

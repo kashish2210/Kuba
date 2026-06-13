@@ -12,10 +12,10 @@
 <div class="pos-app">
     <!-- Top bar -->
     <header class="pos-topbar">
-        <div class="pos-logo">
+        <a href="{% url 'pos:terminal' %}" class="pos-logo">
             {% if cafe.logo_svg %}<span class="pos-logo-svg">{{ cafe.logo_svg|safe }}</span>{% endif %}
             <span class="pos-logo-text">{{ cafe.name }}</span>
-        </div>
+        </a>
 
         <div class="pos-search">
             <input type="search" id="product-search" placeholder="Search products…" autocomplete="off" />
@@ -27,10 +27,10 @@
                 <span class="dot"></span> Session #{{ session.id }} · {{ session.opened_at|time:"H:i" }}
             </span>
             {% endif %}
-            <button class="pos-pill" id="orders-btn" title="Orders this session">
+            <a href="{% url 'pos:orders' %}" class="pos-pill {% if request.resolver_match.url_name == 'orders' %}pos-pill-active{% endif %}" id="orders-btn" title="Orders this session">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
                 Orders
-            </button>
+            </a>
             <button class="pos-pill" id="table-indicator" title="Choose table">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l1-7h16l1 7"/><path d="M4 11h16v2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 <span id="table-label">No table</span>

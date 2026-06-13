@@ -100,6 +100,7 @@ def order_json(order):
         "tax_amount": float(order.tax_amount),
         "discount_amount": float(order.discount_amount or 0),
         "total": float(order.total),
+        "created_at": order.created_at.strftime("%d/%m %H:%M"),
     }
 
 
