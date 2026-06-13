@@ -64,6 +64,11 @@
             {% empty %}
                 <p class="pos-empty">No payment methods enabled.</p>
             {% endfor %}
+            {% if payment_settings and payment_settings.razorpay_enabled and payment_settings.razorpay_key_id %}
+                <button class="pay-method" data-method="razorpay">
+                    <span class="pm-label">Razorpay</span>
+                </button>
+            {% endif %}
         </div>
 
         <div class="pay-amount">
@@ -120,14 +125,21 @@
     </div>
 </div>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 window.POS = {
     urls: {
         tables: "{% url 'pos:tables' %}",
         orderStart: "{% url 'pos:order-start' %}",
         orderRoot: "/pos/order/",
+<<<<<<< Updated upstream
         ordersPage: "{% url 'pos:orders' %}",
     }
+=======
+    },
+    razorpayKeyId: "{{ payment_settings.razorpay_key_id|default:''|escapejs }}",
+    cafeName: "{{ request.cafe.name|escapejs }}",
+>>>>>>> Stashed changes
 };
 </script>
 {% endblock %}

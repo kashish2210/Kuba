@@ -244,6 +244,8 @@
         $("upi-qr").src = orderUrl("upi-qr/") + "?t=" + Date.now();
       } else if (method === "card") {
         box.innerHTML = '<input id="pay-input" placeholder="Transaction reference">';
+      } else if (method === "razorpay") {
+        box.innerHTML = '<div style="text-align:center;color:#9a948c;font-size:.85rem;">Pay online via Razorpay</div>';
       }
     }
 
@@ -273,6 +275,37 @@
     $("btn-pay").addEventListener("click", function () {
       if (!order || !order.lines.length) { toast("Cart is empty"); return; }
       if (!method) { toast("Select a payment method"); return; }
+      
+      if (method === "razorpay") {
+        api(orderUrl("razorpay/create/"), "POST", {}).then(function (data) {
+          if (!window.POS.razorpayKeyId) {
+            toast("Razorpay key missing");
+            return;
+          }
+          var options = {
+            "key": window.POS.razorpayKeyId,
+            "amount": data.amount,
+            "currency": data.currency,
+            "name": window.POS.cafeName || "Cafe",
+            "order_id": data.razorpay_order_id,
+            "handler": function (response) {
+              api(orderUrl("razorpay/verify/"), "POST", {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              }).then(showReceipt).catch(showErr);
+            },
+            "theme": { "color": "#0d6efd" }
+          };
+          var rzp1 = new Razorpay(options);
+          rzp1.on('payment.failed', function (response){
+             toast("Payment failed: " + response.error.description);
+          });
+          rzp1.open();
+        }).catch(showErr);
+        return;
+      }
+
       var body = { method_type: method };
       var inp = $("pay-input");
       if (method === "cash") body.amount_tendered = inp ? inp.value || 0 : 0;

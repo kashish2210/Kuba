@@ -18,6 +18,7 @@ from cafe_pos.models import (
     PaymentRecord,
     Product,
     ProductCategory,
+    PaymentSettings,
 )
 from dashboard.mixins import cafe_admin_required
 from tenants.utils import log_action
@@ -75,6 +76,7 @@ def terminal(request):
         "is_admin": request.user.is_superuser or (
             getattr(request.user, "profile", None) and request.user.profile.role == "admin"
         ),
+        "payment_settings": PaymentSettings.objects.filter(cafe=cafe).first(),
     }
     return render(request, "pos/terminal.html", context)
 
@@ -348,6 +350,103 @@ def order_pay(request, pk):
         "total": float(total),
         "amount_tendered": float(tendered),
         "change_due": float(change if change > 0 else 0),
+        "customer_email": (order.customer.email if order.customer_id else "") or "",
+        "receipt_emailed": receipt_emailed,
+    })
+
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def order_razorpay_create(request, pk):
+    import razorpay
+    from cafe_pos.models import PaymentSettings
+    
+    order = _get_order(request, pk)
+    if order.status == Order.OrderStatus.PAID:
+        return JsonResponse({"error": "Order already paid."}, status=400)
+    if not order.line_items.exists():
+        return JsonResponse({"error": "Cart is empty."}, status=400)
+        
+    settings_obj = PaymentSettings.objects.filter(cafe=request.cafe).first()
+    if not settings_obj or not settings_obj.razorpay_enabled or not settings_obj.razorpay_key_id or not settings_obj.razorpay_key_secret:
+        return JsonResponse({"error": "Razorpay is not configured for this cafe."}, status=400)
+        
+    client = razorpay.Client(auth=(settings_obj.razorpay_key_id, settings_obj.razorpay_key_secret))
+    
+    amount_in_paise = int(order.total * 100)
+    
+    try:
+        rzp_order = client.order.create({
+            "amount": amount_in_paise,
+            "currency": "INR",
+            "receipt": order.order_number,
+        })
+        return JsonResponse({"razorpay_order_id": rzp_order["id"], "amount": amount_in_paise, "currency": "INR"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def order_razorpay_verify(request, pk):
+    import razorpay
+    from cafe_pos.models import PaymentSettings
+    
+    order = _get_order(request, pk)
+    if order.status == Order.OrderStatus.PAID:
+        return JsonResponse({"error": "Order already paid."}, status=400)
+
+    data = _data(request)
+    rzp_payment_id = data.get("razorpay_payment_id")
+    rzp_order_id = data.get("razorpay_order_id")
+    rzp_signature = data.get("razorpay_signature")
+    
+    settings_obj = PaymentSettings.objects.filter(cafe=request.cafe).first()
+    if not settings_obj or not settings_obj.razorpay_enabled:
+        return JsonResponse({"error": "Razorpay is not configured for this cafe."}, status=400)
+
+    client = razorpay.Client(auth=(settings_obj.razorpay_key_id, settings_obj.razorpay_key_secret))
+    
+    try:
+        client.utility.verify_payment_signature({
+            'razorpay_order_id': rzp_order_id,
+            'razorpay_payment_id': rzp_payment_id,
+            'razorpay_signature': rzp_signature
+        })
+    except razorpay.errors.SignatureVerificationError:
+        return JsonResponse({"error": "Invalid payment signature."}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+    with transaction.atomic():
+        PaymentRecord.objects.create(
+            order=order,
+            method_type=PaymentRecord.MethodType.RAZORPAY,
+            amount_tendered=order.total,
+            change_due=Decimal("0"),
+            transaction_ref=rzp_payment_id,
+            paid_at=timezone.now(),
+        )
+        order.status = Order.OrderStatus.PAID
+        order.paid_at = timezone.now()
+        order.save(update_fields=["status", "paid_at"])
+
+    log_action("other", cafe=request.cafe, request=request, target=order,
+               message=f"Payment for {order.order_number}: Razorpay ₹{order.total}.")
+
+    receipt_emailed = False
+    if order.customer_id and order.customer.email:
+        from cafe_pos.receipts import email_receipt
+        receipt_emailed = email_receipt(order, order.customer.email)
+
+    return JsonResponse({
+        "ok": True,
+        "order_number": order.order_number,
+        "method": "razorpay",
+        "total": float(order.total),
+        "amount_tendered": float(order.total),
+        "change_due": 0,
         "customer_email": (order.customer.email if order.customer_id else "") or "",
         "receipt_emailed": receipt_emailed,
     })

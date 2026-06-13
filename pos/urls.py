@@ -21,6 +21,8 @@ urlpatterns = [
     path("order/<int:pk>/send-kitchen/", views.order_send_kitchen, name="order-send-kitchen"),
     path("order/<int:pk>/pay/", views.order_pay, name="order-pay"),
     path("order/<int:pk>/email-receipt/", views.order_email_receipt, name="order-email-receipt"),
+    path("order/<int:pk>/razorpay/create/", views.order_razorpay_create, name="order-razorpay-create"),
+    path("order/<int:pk>/razorpay/verify/", views.order_razorpay_verify, name="order-razorpay-verify"),
     path("order/<int:pk>/upi-qr/", views.order_upi_qr, name="order-upi-qr"),
     path("order/<int:pk>/cancel/", views.order_cancel, name="order-cancel"),
 ]

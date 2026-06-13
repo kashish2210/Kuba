@@ -294,6 +294,7 @@ class PaymentRecord(models.Model):
         CASH = "cash", "Cash"
         CARD = "card", "Card"
         UPI = "upi", "UPI"
+        RAZORPAY = "razorpay", "Razorpay"
 
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment_record")
     method_type = models.CharField(max_length=10, choices=MethodType.choices)

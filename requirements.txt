@@ -3,3 +3,4 @@ pillow
 django-allauth
 django-jazzmin
 qrcode
+razorpay
