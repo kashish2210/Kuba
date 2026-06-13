@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Customize — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Customize Cafe{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Customize Cafe</h1>
+    <p class="text-muted">Branding and identity for {{ cafe.name }}.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+    <div class="card"><div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="dash-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Cafe name</label>
+                {{ form.name }}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Subdomain</label>
+                <input class="form-input" type="text" value="{{ cafe.subdomain }}.{{ base_domain }}" disabled>
+                <div class="text-xs text-muted" style="margin-top:4px;">Your subdomain is managed by the Kuba team. Contact support to change it.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Logo (SVG code)</label>
+                {{ form.logo_svg }}
+                <div class="text-xs text-muted" style="margin-top:4px;">Paste inline &lt;svg&gt; markup. It appears in your sidebar. Live preview on the right.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Logo image (optional)</label>
+                {{ form.logo_image }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </form>
+    </div></div>
+
+    <div class="card"><div class="card-body" style="text-align:center;">
+        <h3 class="card-title" style="margin-bottom:12px;">Logo preview</h3>
+        <div id="logo-preview" style="width:90px;height:90px;margin:0 auto;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--surface-alt,#f1ede6);">
+            {% if cafe.logo_svg %}{{ cafe.logo_svg|safe }}{% else %}<span class="text-muted text-sm">No logo</span>{% endif %}
+        </div>
+        {% if cafe.logo_image %}<img src="{{ cafe.logo_image.url }}" alt="logo" style="max-width:120px;margin-top:16px;border-radius:10px;">{% endif %}
+    </div></div>
+</div>
+
+<script>
+(function(){
+    var ta = document.getElementById("id_logo_svg");
+    var preview = document.getElementById("logo-preview");
+    if (ta && preview) {
+        ta.addEventListener("input", function(){
+            preview.innerHTML = ta.value || '<span class="text-muted text-sm">No logo</span>';
+        });
+    }
+})();
+</script>
+{% endblock %}

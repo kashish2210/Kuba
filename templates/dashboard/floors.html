@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Floor &amp; Tables — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Floor &amp; Tables{% endblock %}
+
+{% block extra_css %}
+<style>
+    .floor-tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:20px; }
+    .floor-tab {
+        padding:8px 16px; border-radius:10px; background:var(--surface-alt,#f1ede6);
+        color:var(--text-secondary,#555); font-weight:600; font-size:0.9rem; cursor:pointer;
+        border:1px solid transparent; text-decoration:none; transition:all .15s;
+    }
+    .floor-tab:hover { background:var(--surface,#fff); }
+    .floor-tab.active { background:var(--primary,#2c3e50); color:#fff; }
+    .table-grid {
+        display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+        gap:16px; margin-top:8px;
+    }
+    .table-card {
+        position:relative; aspect-ratio:1/1; border-radius:14px;
+        background:var(--surface-alt,#eceae5); border:1.5px solid var(--border,#e2ddd4);
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:4px; transition:all .15s;
+    }
+    .table-card.inactive { opacity:.5; }
+    .table-card .t-num { font-size:1.6rem; font-weight:800; color:var(--text,#222); line-height:1; }
+    .table-card .t-seats { font-size:0.75rem; color:var(--text-muted,#888); }
+    .table-card .t-actions {
+        position:absolute; top:8px; right:8px; display:flex; gap:4px; opacity:0; transition:opacity .15s;
+    }
+    .table-card:hover .t-actions { opacity:1; }
+    .t-actions a, .t-actions button {
+        width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+        border-radius:6px;border:none;background:rgba(0,0,0,0.06);color:#444;cursor:pointer;font-size:12px;
+    }
+    .t-actions button:hover { background:rgba(231,76,60,0.15); color:#c0392b; }
+    .add-card {
+        aspect-ratio:1/1; border-radius:14px; border:2px dashed var(--border,#cfc8bd);
+        background:transparent; display:flex; align-items:center; justify-content:center;
+        color:var(--text-muted,#999); cursor:pointer; font-size:2rem; font-weight:300;
+    }
+    .add-card:hover { border-color:var(--primary,#2c3e50); color:var(--primary,#2c3e50); }
+    .inline-form { display:flex; flex-direction:column; gap:8px; padding:10px; }
+    .inline-form input { width:100%; }
+    details.panel { margin-bottom:16px; }
+    details.panel summary { cursor:pointer; font-weight:600; color:var(--primary,#2c3e50); }
+    .row-form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;">
+    <div>
+        <h1 class="page-title">Floor &amp; Tables</h1>
+        <p class="text-muted">Organise your dining areas and set up numbered tables.</p>
+    </div>
+</div>
+
+<!-- Floor tabs -->
+<div class="floor-tabs">
+    {% for f in floors %}
+        <a href="?floor={{ f.id }}" class="floor-tab {% if active_floor and f.id == active_floor.id %}active{% endif %}">{{ f.name }}</a>
+    {% endfor %}
+    <details class="panel" style="margin:0 0 0 8px;">
+        <summary class="floor-tab" style="display:inline-block;">+ Add floor</summary>
+        <form method="post" action="{% url 'dashboard:floor-create' %}" class="row-form">
+            {% csrf_token %}
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Floor name</label>
+                <input class="form-input" type="text" name="name" placeholder="e.g. Terrace" required>
+            </div>
+            <div class="form-group" style="margin:0;max-width:120px;">
+                <label class="form-label">Order</label>
+                <input class="form-input" type="number" name="sort_order" value="0">
+            </div>
+            <button type="submit" class="btn btn-primary">Add floor</button>
+        </form>
+    </details>
+</div>
+
+{% if active_floor %}
+<div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        {% if edit_floor %}
+            <form method="post" action="{% url 'dashboard:floor-update' active_floor.id %}" class="row-form" style="margin:0;">
+                {% csrf_token %}
+                <div class="form-group" style="margin:0;">{{ floor_form.name }}</div>
+                <div class="form-group" style="margin:0;max-width:110px;">{{ floor_form.sort_order }}</div>
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                <a href="?floor={{ active_floor.id }}" class="btn btn-ghost btn-sm">Cancel</a>
+            </form>
+        {% else %}
+            <h3 class="card-title">{{ active_floor.name }} <span class="text-muted text-sm">· {{ tables|length }} table{{ tables|length|pluralize }}</span></h3>
+            <div style="display:flex;gap:8px;">
+                <a href="?floor={{ active_floor.id }}&edit_floor=1" class="btn btn-secondary btn-sm">Rename</a>
+                <form method="post" action="{% url 'dashboard:floor-delete' active_floor.id %}" onsubmit="return confirm('Delete this floor and all its tables?');" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Delete floor</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="table-grid">
+            {% for t in tables %}
+                {% if edit_table and t.id == edit_table.id %}
+                    <div class="table-card" style="aspect-ratio:auto;">
+                        <form method="post" action="{% url 'dashboard:table-update' t.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="floor" value="{{ active_floor.id }}">
+                            <label class="form-label text-xs">Number</label>
+                            <input class="form-input" type="text" name="table_number" value="{{ t.table_number }}" required>
+                            <label class="form-label text-xs">Seats</label>
+                            <input class="form-input" type="number" name="seats" value="{{ t.seats }}" min="1" required>
+                            <label class="text-xs" style="display:flex;gap:6px;align-items:center;">
+                                <input type="checkbox" name="is_active" {% if t.is_active %}checked{% endif %}> Active
+                            </label>
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                            <a href="?floor={{ active_floor.id }}" class="btn btn-ghost btn-sm">Cancel</a>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="table-card {% if not t.is_active %}inactive{% endif %}">
+                        <div class="t-actions">
+                            <a href="?floor={{ active_floor.id }}&edit_table={{ t.id }}" title="Edit">✎</a>
+                            <form method="post" action="{% url 'dashboard:table-delete' t.id %}" onsubmit="return confirm('Delete table {{ t.table_number }}?');" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" title="Delete">✕</button>
+                            </form>
+                        </div>
+                        <div class="t-num">{{ t.table_number }}</div>
+                        <div class="t-seats">{{ t.seats }} seat{{ t.seats|pluralize }}</div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Add table -->
+            <details class="add-card" style="aspect-ratio:auto;align-items:stretch;justify-content:flex-start;padding:0;">
+                <summary class="add-card" style="border:none;list-style:none;">+</summary>
+                <form method="post" action="{% url 'dashboard:table-create' %}" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="floor" value="{{ active_floor.id }}">
+                    <label class="form-label text-xs">Number</label>
+                    <input class="form-input" type="text" name="table_number" placeholder="e.g. 17" required>
+                    <label class="form-label text-xs">Seats</label>
+                    <input class="form-input" type="number" name="seats" value="4" min="1" required>
+                    <button type="submit" class="btn btn-primary btn-sm">Add table</button>
+                </form>
+            </details>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card"><div class="card-body">
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        </div>
+        <h3 class="empty-state-title">No floors yet</h3>
+        <p class="empty-state-desc">Add your first floor (e.g. “Ground Floor”) using the <strong>+ Add floor</strong> button above, then start adding numbered tables.</p>
+    </div>
+</div></div>
+{% endif %}
+{% endblock %}

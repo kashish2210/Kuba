@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Products — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Products{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;">
+    <div>
+        <h1 class="page-title">Products</h1>
+        <p class="text-muted">Everything on your menu, scoped to {{ cafe.name }}.</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a href="{% url 'dashboard:categories' %}" class="btn btn-secondary">Categories</a>
+        {% if has_categories %}
+            <a href="{% url 'dashboard:product-create' %}" class="btn btn-primary">+ Add product</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if not has_categories %}
+    <div class="card"><div class="card-body">
+        <div class="empty-state">
+            <h3 class="empty-state-title">Add a category first</h3>
+            <p class="empty-state-desc">Products belong to a category. <a href="{% url 'dashboard:categories' %}">Create one</a> to get started.</p>
+        </div>
+    </div></div>
+{% else %}
+<div class="card"><div class="card-body">
+    {% if products %}
+    <table class="data-table">
+        <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Tax</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for p in products %}
+            <tr>
+                <td><strong>{{ p.name }}</strong><div class="text-xs text-muted">{{ p.unit_of_measure }}</div></td>
+                <td>
+                    <span class="badge" style="background:{{ p.category.color }}22;color:{{ p.category.color }};border:1px solid {{ p.category.color }};">{{ p.category.name }}</span>
+                </td>
+                <td>{{ p.price }}</td>
+                <td>{{ p.tax_percentage }}%</td>
+                <td>
+                    {% if p.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-neutral">Hidden</span>{% endif %}
+                </td>
+                <td class="text-right">
+                    <a href="{% url 'dashboard:product-update' p.id %}" class="btn btn-ghost btn-sm">Edit</a>
+                    <form method="post" action="{% url 'dashboard:product-delete' p.id %}" onsubmit="return confirm('Delete {{ p.name }}?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3 class="empty-state-title">No products yet</h3>
+        <p class="empty-state-desc">Click <strong>+ Add product</strong> to create your first menu item.</p>
+    </div>
+    {% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

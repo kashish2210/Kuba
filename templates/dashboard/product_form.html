@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mode }} product — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Products · {{ mode }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">{{ mode }} product</h1>
+    <p class="text-muted"><a href="{% url 'dashboard:products' %}">← Back to products</a></p>
+</div>
+
+<div class="card" style="max-width:640px;">
+    <div class="card-body">
+        <form method="post" class="dash-form">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="text-xs text-muted" style="margin-top:4px;">{{ field.help_text }}</div>{% endif %}
+                    {% if field.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ field.errors|striptags }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary">Save product</button>
+                <a href="{% url 'dashboard:products' %}" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

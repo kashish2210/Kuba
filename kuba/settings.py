@@ -25,12 +25,24 @@ SECRET_KEY = 'django-insecure-z9wnpqj(-7a9ar98jt!+^4m$93o3(kll5sp@kn!z3w9)zpb$pt
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ─── Multi-tenant / subdomain configuration ──────────────────────────────
+# Cafes live at <subdomain>.<KUBA_BASE_DOMAIN>; the Django admin lives at
+# <KUBA_ADMIN_SUBDOMAIN>.<KUBA_BASE_DOMAIN>. Locally, *.localhost works too.
+KUBA_BASE_DOMAIN = os.environ.get('KUBA_BASE_DOMAIN', 'kuba.com')
+KUBA_ADMIN_SUBDOMAIN = os.environ.get('KUBA_ADMIN_SUBDOMAIN', 'admin')
+
+ALLOWED_HOSTS = [
+    f'.{KUBA_BASE_DOMAIN}',  # kuba.com and every *.kuba.com subdomain
+    '.localhost',            # *.localhost for local subdomain testing
+    'localhost',
+    '127.0.0.1',
+]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,6 +53,7 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'tenants',
     'dashboard',
     'cafe_pos',
 ]
@@ -54,6 +67,8 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'tenants.middleware.TenantMiddleware',
+    'tenants.middleware.AdminAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'kuba.urls'
@@ -68,6 +83,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'tenants.context_processors.tenant',
             ],
         },
     },
@@ -145,3 +161,35 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change to 'mandatory' in production
 ACCOUNT_LOGOUT_ON_GET = True
+
+# Self-service signup creates a cafe; the adapter routes users to their cafe host.
+ACCOUNT_FORMS = {'signup': 'tenants.forms.CafeSignupForm'}
+ACCOUNT_ADAPTER = 'tenants.adapters.KubaAccountAdapter'
+
+# ─── Jazzmin (admin UI) ───────────────────────────────────────────────────
+JAZZMIN_SETTINGS = {
+    'site_title': 'Kuba Admin',
+    'site_header': 'Kuba Platform',
+    'site_brand': 'Kuba',
+    'welcome_sign': 'Welcome to the Kuba platform admin',
+    'copyright': 'Kuba',
+    'search_model': ['tenants.Cafe', 'auth.User'],
+    'show_sidebar': True,
+    'navigation_expanded': True,
+    'order_with_respect_to': ['tenants', 'cafe_pos', 'auth'],
+    'icons': {
+        'tenants.Cafe': 'fas fa-store',
+        'tenants.ReservedSubdomain': 'fas fa-lock',
+        'tenants.AuditLog': 'fas fa-clipboard-list',
+        'auth.User': 'fas fa-user',
+        'auth.Group': 'fas fa-users',
+    },
+    'topmenu_links': [
+        {'name': 'Cafes', 'model': 'tenants.Cafe'},
+    ],
+}
+JAZZMIN_UI_TWEAKS = {
+    'theme': 'flatly',
+    'navbar_small_text': False,
+    'sidebar_nav_flat_style': True,
+}

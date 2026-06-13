@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Audit Log{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Audit Log</h1>
+    <p class="text-muted">A record of changes made in {{ cafe.name }}.</p>
+</div>
+
+<div class="card"><div class="card-body">
+    {% if page_obj.object_list %}
+    <table class="data-table">
+        <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th><th>IP</th></tr></thead>
+        <tbody>
+        {% for log in page_obj %}
+            <tr>
+                <td class="text-sm text-muted">{{ log.created_at|date:"d M Y, H:i" }}</td>
+                <td>{{ log.actor.username|default:"system" }}</td>
+                <td><span class="badge badge-neutral">{{ log.get_action_display }}</span></td>
+                <td class="text-sm">{{ log.target_type }} {{ log.target_repr }}</td>
+                <td class="text-sm">{{ log.message }}</td>
+                <td class="text-xs text-muted">{{ log.ip_address|default:"—" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if page_obj.has_other_pages %}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;align-items:center;">
+        {% if page_obj.has_previous %}<a class="btn btn-ghost btn-sm" href="?page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+        <span class="text-sm text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a class="btn btn-ghost btn-sm" href="?page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+        <h3 class="empty-state-title">No log entries yet</h3>
+        <p class="empty-state-desc">Changes you make across the dashboard are recorded here.</p>
+    </div>
+    {% endif %}
+</div></div>
+{% endblock %}

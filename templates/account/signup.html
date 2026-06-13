@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="auth-form-header">
-    <h2 class="auth-form-title">Create your account</h2>
-    <p class="auth-form-subtitle">Get started with KUBA Cafe POS in seconds</p>
+    <h2 class="auth-form-title">Create your cafe</h2>
+    <p class="auth-form-subtitle">Get your own KUBA workspace in seconds</p>
 </div>
 
 {% if form.non_field_errors %}
@@ -22,6 +22,41 @@
     {% csrf_token %}
 
     <div class="form-group">
+        <label class="form-label" for="id_cafe_name">Cafe name</label>
+        <input
+            type="text"
+            name="cafe_name"
+            id="id_cafe_name"
+            placeholder="e.g. Blue Bottle Cafe"
+            value="{{ form.cafe_name.value|default:'' }}"
+            required
+            autofocus
+        />
+        {% if form.cafe_name.errors %}
+            <div class="auth-errors" style="margin-top: 6px; padding: 8px 12px;">{{ form.cafe_name.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="id_desired_subdomain">Subdomain <span style="font-weight:400;opacity:.6;">(optional)</span></label>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <input
+                type="text"
+                name="desired_subdomain"
+                id="id_desired_subdomain"
+                placeholder="auto-generated if blank"
+                value="{{ form.desired_subdomain.value|default:'' }}"
+                style="flex:1;"
+            />
+            <span style="white-space:nowrap;opacity:.65;font-size:.9rem;">.{{ base_domain }}</span>
+        </div>
+        <div id="subdomain-status" style="margin-top:6px;font-size:.82rem;font-weight:600;"></div>
+        {% if form.desired_subdomain.errors %}
+            <div class="auth-errors" style="margin-top: 6px; padding: 8px 12px;">{{ form.desired_subdomain.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
         <label class="form-label" for="id_username">Username</label>
         <input
             type="text"
@@ -30,7 +65,6 @@
             placeholder="Choose a username"
             value="{{ form.username.value|default:'' }}"
             required
-            autofocus
         />
         {% if form.username.errors %}
             <div class="auth-errors" style="margin-top: 6px; padding: 8px 12px;">
@@ -111,4 +145,26 @@
 <div class="auth-switch">
     Already have an account? <a href="{% url 'account_login' %}">Sign in here</a>
 </div>
+
+<script>
+(function(){
+    var input = document.getElementById("id_desired_subdomain");
+    var status = document.getElementById("subdomain-status");
+    if (!input || !status) return;
+    var timer = null;
+    function check(){
+        var v = input.value.trim();
+        if (!v) { status.textContent = "Leave blank and we'll generate one for you."; status.style.color = "#9ca3af"; return; }
+        status.textContent = "Checking…"; status.style.color = "#9ca3af";
+        fetch("{% url 'tenants:subdomain-available' %}?value=" + encodeURIComponent(v))
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                status.textContent = (d.available ? "✓ " : "✗ ") + d.reason;
+                status.style.color = d.available ? "#15803d" : "#b91c1c";
+            })
+            .catch(function(){ status.textContent = ""; });
+    }
+    input.addEventListener("input", function(){ clearTimeout(timer); timer = setTimeout(check, 300); });
+})();
+</script>
 {% endblock %}

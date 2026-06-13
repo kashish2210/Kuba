@@ -15,6 +15,14 @@ class Profile(models.Model):
         on_delete=models.CASCADE,
         related_name="profile",
     )
+    cafe = models.ForeignKey(
+        "tenants.Cafe",
+        on_delete=models.CASCADE,
+        related_name="profiles",
+        null=True,
+        blank=True,
+        help_text="The cafe this member belongs to. Null for platform staff.",
+    )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CASHIER)
     is_archived = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -24,14 +32,21 @@ class Profile(models.Model):
 
 
 class ProductCategory(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="product_categories")
+    name = models.CharField(max_length=100)
     color = models.CharField(max_length=7)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["cafe", "name"], name="uniq_category_per_cafe"),
+        ]
 
     def __str__(self):
         return self.name
 
 
 class Product(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="products")
     name = models.CharField(max_length=200)
     category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, related_name="products")
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
@@ -51,19 +66,26 @@ class Product(models.Model):
 
 
 class Floor(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="floors")
     name = models.CharField(max_length=100)
+    sort_order = models.PositiveIntegerField(default=0, help_text="Lower number appears first.")
+
+    class Meta:
+        ordering = ["sort_order", "name"]
 
     def __str__(self):
         return self.name
 
 
 class CafeTable(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="tables")
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name="tables")
     table_number = models.CharField(max_length=20)
-    seats = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    seats = models.PositiveIntegerField(validators=[MinValueValidator(1)], default=4)
     is_active = models.BooleanField(default=True)
 
     class Meta:
+        ordering = ["id"]
         constraints = [
             models.UniqueConstraint(fields=["floor", "table_number"], name="uniq_table_per_floor"),
         ]
@@ -78,9 +100,15 @@ class PaymentMethod(models.Model):
         CARD = "card", "Card"
         UPI = "upi", "UPI"
 
-    type = models.CharField(max_length=10, choices=MethodType.choices, unique=True)
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="payment_methods")
+    type = models.CharField(max_length=10, choices=MethodType.choices)
     is_enabled = models.BooleanField(default=False)
     upi_id = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["cafe", "type"], name="uniq_payment_method_per_cafe"),
+        ]
 
     def __str__(self):
         return self.get_type_display()
@@ -91,10 +119,16 @@ class Coupon(models.Model):
         PERCENTAGE = "percentage", "Percentage"
         FIXED = "fixed", "Fixed"
 
-    code = models.CharField(max_length=50, unique=True)
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="coupons")
+    code = models.CharField(max_length=50)
     discount_type = models.CharField(max_length=20, choices=DiscountType.choices)
     discount_value = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["cafe", "code"], name="uniq_coupon_code_per_cafe"),
+        ]
 
     def save(self, *args, **kwargs):
         self.code = self.code.upper()
@@ -113,6 +147,7 @@ class Promotion(models.Model):
         PERCENTAGE = "percentage", "Percentage"
         FIXED = "fixed", "Fixed"
 
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="promotions")
     name = models.CharField(max_length=150)
     apply_to = models.CharField(max_length=20, choices=ApplyTo.choices)
     product = models.ForeignKey(
@@ -144,9 +179,19 @@ class Promotion(models.Model):
 
 
 class Customer(models.Model):
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="customers")
     name = models.CharField(max_length=150)
-    email = models.EmailField(max_length=255, unique=True, null=True, blank=True)
+    email = models.EmailField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cafe", "email"],
+                name="uniq_customer_email_per_cafe",
+                condition=Q(email__isnull=False),
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -157,6 +202,7 @@ class POSSession(models.Model):
         OPEN = "open", "Open"
         CLOSED = "closed", "Closed"
 
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="pos_sessions")
     opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="opened_sessions")
     opened_at = models.DateTimeField(default=timezone.now)
     closed_at = models.DateTimeField(null=True, blank=True)
@@ -166,9 +212,9 @@ class POSSession(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["status"],
+                fields=["cafe"],
                 condition=Q(status="open"),
-                name="unique_open_session",
+                name="unique_open_session_per_cafe",
             ),
         ]
 
@@ -183,7 +229,8 @@ class Order(models.Model):
         PAID = "paid", "Paid"
         CANCELLED = "cancelled", "Cancelled"
 
-    order_number = models.CharField(max_length=30, unique=True)
+    cafe = models.ForeignKey("tenants.Cafe", on_delete=models.CASCADE, related_name="orders")
+    order_number = models.CharField(max_length=30)
     session = models.ForeignKey(POSSession, on_delete=models.PROTECT, related_name="orders")
     table = models.ForeignKey(CafeTable, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
@@ -197,6 +244,11 @@ class Order(models.Model):
     promotion = models.ForeignKey(Promotion, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["cafe", "order_number"], name="uniq_order_number_per_cafe"),
+        ]
 
     def __str__(self):
         return self.order_number

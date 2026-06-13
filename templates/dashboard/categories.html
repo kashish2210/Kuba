@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Categories — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Categories{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;">
+    <div>
+        <h1 class="page-title">Categories</h1>
+        <p class="text-muted">Group products and give each a colour for the POS grid.</p>
+    </div>
+    <a href="{% url 'dashboard:products' %}" class="btn btn-secondary">Products</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+    <div class="card"><div class="card-body">
+        {% if categories %}
+        <table class="data-table">
+            <thead><tr><th>Colour</th><th>Name</th><th>Products</th><th class="text-right">Actions</th></tr></thead>
+            <tbody>
+            {% for c in categories %}
+                <tr>
+                    <td><span style="display:inline-block;width:22px;height:22px;border-radius:6px;background:{{ c.color }};border:1px solid rgba(0,0,0,.1);"></span></td>
+                    <td><strong>{{ c.name }}</strong></td>
+                    <td>{{ c.products.count }}</td>
+                    <td class="text-right">
+                        <a href="?edit={{ c.id }}" class="btn btn-ghost btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:category-delete' c.id %}" onsubmit="return confirm('Delete {{ c.name }}?');" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="empty-state-title">No categories yet</h3>
+            <p class="empty-state-desc">Add one using the form on the right.</p>
+        </div>
+        {% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">{% if edit_instance %}Edit “{{ edit_instance.name }}”{% else %}Add category{% endif %}</h3>
+        <form method="post" action="{% if edit_instance %}{% url 'dashboard:category-update' edit_instance.id %}{% else %}{% url 'dashboard:category-create' %}{% endif %}" class="dash-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                {{ form.name }}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Colour</label>
+                {{ form.color }}
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-primary">{% if edit_instance %}Save{% else %}Add{% endif %}</button>
+                {% if edit_instance %}<a href="{% url 'dashboard:categories' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+            </div>
+        </form>
+    </div></div>
+</div>
+{% endblock %}

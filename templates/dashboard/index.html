@@ -1,76 +1,84 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard — KUBA Cafe POS{% endblock %}
+{% block title %}Dashboard — {{ cafe.name }}{% endblock %}
 {% block breadcrumb %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard-header animate-in" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+<div class="dashboard-header animate-in" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:16px;flex-wrap:wrap;">
     <div>
         <h1 class="page-title">Welcome back, {{ request.user.username }}! 👋</h1>
-        <p class="text-muted">Here's what's happening at your cafe today.</p>
+        <p class="text-muted">Managing <strong>{{ cafe.name }}</strong> · {{ cafe.subdomain }}.{{ base_domain }}</p>
     </div>
     <div class="header-actions">
-        <a href="#" class="btn btn-primary">
-            <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            New POS Session
+        <a href="{% url 'dashboard:floors' %}" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            Set up tables
         </a>
     </div>
 </div>
 
-<div class="stats-grid animate-in" style="animation-delay: 0.1s;">
+<div class="stats-grid animate-in" style="animation-delay:0.1s;">
     <div class="stat-card">
         <div class="stat-icon amber">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         </div>
         <div class="stat-info">
-            <div class="stat-label">Today's Sales</div>
-            <div class="stat-value">$0.00</div>
-            <div class="stat-change up">
-                <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                0% vs yesterday
-            </div>
+            <div class="stat-label">Products</div>
+            <div class="stat-value">{{ stat_products }}</div>
+            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_categories }} categories</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon sage">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
         </div>
         <div class="stat-info">
-            <div class="stat-label">Total Orders</div>
-            <div class="stat-value">0</div>
-            <div class="stat-change down">
-                <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
-                0% vs yesterday
-            </div>
+            <div class="stat-label">Tables</div>
+            <div class="stat-value">{{ stat_tables }}</div>
+            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">{{ stat_floors }} floors</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(52, 152, 219, 0.15); color: #3498db;">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+        <div class="stat-icon" style="background:rgba(52,152,219,0.15);color:#3498db;">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
         </div>
         <div class="stat-info">
-            <div class="stat-label">Active Tables</div>
-            <div class="stat-value">0 <span style="font-size: 1rem; color: var(--text-muted);">/ 0</span></div>
-            <div class="stat-change" style="background: var(--surface-alt); color: var(--text-secondary);">
-                <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                Current utilization
-            </div>
+            <div class="stat-label">Team Members</div>
+            <div class="stat-value">{{ stat_team }}</div>
+            <div class="stat-change" style="background:var(--surface-alt);color:var(--text-secondary);">active</div>
         </div>
     </div>
 </div>
 
-<div class="card animate-in" style="animation-delay: 0.2s; margin-top: 24px;">
+<div class="card animate-in" style="animation-delay:0.2s;margin-top:24px;">
     <div class="card-header">
         <h3 class="card-title">Recent Activity</h3>
+        <a href="{% url 'dashboard:audit-log' %}" class="btn btn-ghost btn-sm">View all</a>
     </div>
     <div class="card-body">
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        {% if recent_audit %}
+            <table class="data-table">
+                <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead>
+                <tbody>
+                {% for log in recent_audit %}
+                    <tr>
+                        <td class="text-sm text-muted">{{ log.created_at|date:"d M, H:i" }}</td>
+                        <td>{{ log.actor.username|default:"system" }}</td>
+                        <td><span class="badge badge-neutral">{{ log.get_action_display }}</span></td>
+                        <td class="text-sm">{{ log.message }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <h3 class="empty-state-title">No activity yet</h3>
+                <p class="empty-state-desc">Actions you take — adding tables, products, team members — will appear here.</p>
             </div>
-            <h3 class="empty-state-title">No recent activity</h3>
-            <p class="empty-state-desc">Your daily operations will appear here once you start a POS session.</p>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

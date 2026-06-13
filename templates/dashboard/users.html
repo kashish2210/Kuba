@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Team — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}Users &amp; Employees{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h1 class="page-title">Users &amp; Employees</h1>
+    <p class="text-muted">People who can work in {{ cafe.name }}.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+    <div class="card"><div class="card-body">
+        {% if members %}
+        <table class="data-table">
+            <thead><tr><th>Member</th><th>Email</th><th>Role</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+            <tbody>
+            {% for m in members %}
+                <tr>
+                    <td><strong>{{ m.user.username }}</strong></td>
+                    <td class="text-sm">{{ m.user.email|default:"—" }}</td>
+                    <td>
+                        {% if m.role == 'admin' %}<span class="badge badge-primary">Admin</span>{% else %}<span class="badge badge-neutral">Cashier</span>{% endif %}
+                    </td>
+                    <td>{% if m.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</td>
+                    <td class="text-right">
+                        <details style="display:inline-block;text-align:left;">
+                            <summary class="btn btn-ghost btn-sm" style="list-style:none;">Password</summary>
+                            <form method="post" action="{% url 'dashboard:user-password' m.id %}" style="margin-top:6px;display:flex;gap:6px;">
+                                {% csrf_token %}
+                                <input class="form-input" type="password" name="password" placeholder="New password" minlength="8" required style="max-width:160px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Set</button>
+                            </form>
+                        </details>
+                        {% if m.user_id != request.user.id %}
+                        <form method="post" action="{% url 'dashboard:user-archive' m.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-secondary btn-sm">{% if m.is_archived %}Restore{% else %}Archive{% endif %}</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><h3 class="empty-state-title">No team members yet</h3></div>
+        {% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h3 class="card-title" style="margin-bottom:12px;">Add team member</h3>
+        <form method="post" class="dash-form">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ field.errors|striptags }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Add member</button>
+        </form>
+    </div></div>
+</div>
+{% endblock %}

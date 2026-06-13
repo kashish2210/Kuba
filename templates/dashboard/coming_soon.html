@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ label }} — {{ cafe.name }}{% endblock %}
+{% block breadcrumb %}{{ label }}{% endblock %}
+
+{% block content %}
+<div class="card"><div class="card-body">
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3 class="empty-state-title">{{ label }} is coming soon</h3>
+        <p class="empty-state-desc">This module is part of the full POS suite (terminal, kitchen display, payments and reports) and will be enabled in an upcoming release.</p>
+        <a href="{% url 'dashboard:index' %}" class="btn btn-primary" style="margin-top:12px;">Back to dashboard</a>
+    </div>
+</div></div>
+{% endblock %}
