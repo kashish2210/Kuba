@@ -364,7 +364,7 @@ def products(request):
 def product_create(request):
     cafe = request.cafe
     if request.method == "POST":
-        form = ProductForm(request.POST, cafe=cafe)
+        form = ProductForm(request.POST, request.FILES, cafe=cafe)
         if form.is_valid():
             product = form.save(commit=False)
             product.cafe = cafe
@@ -383,7 +383,7 @@ def product_update(request, pk):
     cafe = request.cafe
     product = get_object_or_404(Product, pk=pk, cafe=cafe)
     if request.method == "POST":
-        form = ProductForm(request.POST, instance=product, cafe=cafe)
+        form = ProductForm(request.POST, request.FILES, instance=product, cafe=cafe)
         if form.is_valid():
             form.save()
             log_action("update", cafe=cafe, request=request, target=product,

@@ -51,7 +51,7 @@ class ProductForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            "name", "category", "price", "unit_of_measure",
+            "name", "category", "image", "price", "unit_of_measure",
             "tax_percentage", "description", "show_in_kds", "is_active",
         ]
         widgets = {"description": forms.Textarea(attrs={"rows": 3})}
