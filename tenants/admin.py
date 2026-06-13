@@ -50,7 +50,7 @@ class CafeAdmin(admin.ModelAdmin):
     list_filter = ("is_active", "created_at")
     search_fields = ("name", "subdomain", "custom_domain", "owner__username", "owner__email")
     readonly_fields = ("slug", "created_at", "primary_url_display")
-    actions = ("activate_cafes", "deactivate_cafes")
+    actions = ("activate_cafes", "deactivate_cafes", "email_credentials_to_owner")
 
     class Media:
         js = ("tenants/js/subdomain_check.js",)
@@ -165,6 +165,36 @@ class CafeAdmin(admin.ModelAdmin):
     def deactivate_cafes(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"Deactivated {updated} cafe(s).")
+
+    @admin.action(description="Email new credentials to owner")
+    def email_credentials_to_owner(self, request, queryset):
+        from django.core.mail import send_mail
+        from django.contrib.auth.models import User
+
+        count = 0
+        for cafe in queryset:
+            if cafe.owner and cafe.owner.email:
+                new_password = User.objects.make_random_password()
+                cafe.owner.set_password(new_password)
+                cafe.owner.save()
+                
+                url = self._cafe_url(cafe)
+                subject = f"Your {cafe.name} Cafe Credentials"
+                message = f"Hello {cafe.owner.username},\n\nHere are the updated login credentials for your cafe.\n\nInstance URL: {url}\nUsername: {cafe.owner.username}\nEmail: {cafe.owner.email}\nPassword: {new_password}\n\nPlease keep this information secure.\n\nThank you!"
+                
+                try:
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [cafe.owner.email],
+                        fail_silently=False,
+                    )
+                    count += 1
+                except Exception as e:
+                    self.message_user(request, f"Failed to send email to {cafe.owner.email}: {e}", level="error")
+        
+        self.message_user(request, f"Successfully emailed credentials to {count} cafe owner(s).")
 
 
 @admin.register(ReservedSubdomain)
