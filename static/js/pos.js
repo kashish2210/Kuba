@@ -104,6 +104,17 @@
       setSummary(order.subtotal, order.tax_amount, order.discount_amount, order.total, order.coupon_desc);
       $("pay-amount").textContent = money(order.total);
       updatePayDetail();
+
+      var btnCust = $("btn-customer");
+      if (btnCust) {
+        if (order.customer) {
+          btnCust.innerHTML = '👤 ' + order.customer.name + ' <span class="cust-remove-cross" title="Remove customer">✕</span>';
+          btnCust.classList.add("cust-assigned");
+        } else {
+          btnCust.innerHTML = '👤 Customer';
+          btnCust.classList.remove("cust-assigned");
+        }
+      }
     }
 
     function setSummary(sub, tax, disc, total, couponDesc) {
@@ -204,14 +215,216 @@
       };
     });
 
-    $("btn-customer").addEventListener("click", function () {
+    // ── Dedicated Customer Modal logic ──────────────────────────────────────
+    var custModal = $("customer-modal");
+    var custListView = $("customer-list-view");
+    var custFormView = $("customer-form-view");
+    var custSearchInp = $("cust-search-input");
+    var custListContainer = $("customer-list-container");
+    
+    $("btn-customer").addEventListener("click", function (e) {
       if (!order) { openFloor(); toast("Select a table first"); return; }
-      promptModal("Assign customer", [
-        { name: "name", label: "Name", type: "text" },
-        { name: "phone", label: "Phone (optional)", type: "text" },
-        { name: "email", label: "Email (required for receipt)", type: "email" },
-      ], function (vals) {
-        api(orderUrl("customer/"), "POST", vals).then(function (d) { setOrder(d); toast("Customer assigned"); }).catch(showErr);
+      
+      // If clicked the cancel cross, unassign customer
+      if (e.target.classList.contains("cust-remove-cross")) {
+        e.stopPropagation();
+        e.preventDefault();
+        api(orderUrl("customer/"), "POST", { customer_id: "" }).then(function(newOrder) {
+          setOrder(newOrder);
+          toast("Customer removed");
+        }).catch(showErr);
+        return;
+      }
+      
+      openCustomerModal();
+    });
+
+    $("cust-modal-close").addEventListener("click", closeCustomerModal);
+    
+    // Wire search input
+    custSearchInp.addEventListener("input", function() {
+      fetchCustomers(this.value.trim());
+    });
+
+    // Trigger adding customer
+    $("cust-add-trigger").addEventListener("click", function() {
+      openCustomerForm(null);
+    });
+
+    // Close form / discard
+    $("cust-form-close").addEventListener("click", function() {
+      showCustomerListMode();
+    });
+    $("cust-form-discard").addEventListener("click", function() {
+      showCustomerListMode();
+    });
+
+    // Save Customer Form
+    $("cust-form-save").addEventListener("click", function() {
+      var id = $("cust-edit-id").value;
+      var name = $("cust-form-name").value.trim();
+      var email = $("cust-form-email").value.trim();
+      var phone = $("cust-form-phone").value.trim();
+
+      if (!name) { toast("Customer name is required"); return; }
+
+      // Validate 10-digit number and auto prepend +91
+      if (phone !== "") {
+        var rawPhone = phone.replace(/\D/g, ""); // strip all non-digits
+        // If they prefixed 91, strip it to check for 10 digits
+        if (rawPhone.startsWith("91") && rawPhone.length === 12) {
+          rawPhone = rawPhone.substring(2);
+        }
+        if (rawPhone.length !== 10) {
+          toast("Phone number must be exactly 10 digits");
+          return;
+        }
+        phone = "+91 " + rawPhone;
+      }
+
+      var payload = { name: name, email: email, phone: phone };
+      var url = "/pos/customers/create/";
+      if (id) {
+        url = "/pos/customers/" + id + "/edit/";
+      }
+
+      api(url, "POST", payload).then(function(c) {
+        // Automatically assign saved customer to order
+        api(orderUrl("customer/"), "POST", { customer_id: c.id }).then(function(newOrder) {
+          setOrder(newOrder);
+          toast("Customer assigned ✓");
+          closeCustomerModal();
+        }).catch(showErr);
+      }).catch(showErr);
+    });
+
+    // Delete Customer
+    $("cust-form-delete").addEventListener("click", function() {
+      var id = $("cust-edit-id").value;
+      if (!id) return;
+      if (!confirm("Are you sure you want to delete this customer?")) return;
+
+      api("/pos/customers/" + id + "/delete/", "POST").then(function() {
+        toast("Customer deleted");
+        showCustomerListMode();
+      }).catch(showErr);
+    });
+
+    function openCustomerModal() {
+      custSearchInp.value = "";
+      showCustomerListMode();
+      custModal.hidden = false;
+    }
+
+    function closeCustomerModal() {
+      custModal.hidden = true;
+    }
+
+    function showCustomerListMode() {
+      custListView.hidden = false;
+      custFormView.hidden = true;
+      fetchCustomers("");
+    }
+
+    function openCustomerForm(customer) {
+      custListView.hidden = true;
+      custFormView.hidden = false;
+      
+      if (customer) {
+        $("cust-form-title").textContent = "Edit Customer";
+        $("cust-edit-id").value = customer.id;
+        $("cust-form-name").value = customer.name;
+        $("cust-form-email").value = customer.email;
+        $("cust-form-phone").value = customer.phone;
+        $("cust-form-delete").hidden = false;
+      } else {
+        $("cust-form-title").textContent = "Add Customer";
+        $("cust-edit-id").value = "";
+        $("cust-form-name").value = "";
+        $("cust-form-email").value = "";
+        $("cust-form-phone").value = "";
+        $("cust-form-delete").hidden = true;
+      }
+    }
+
+    function fetchCustomers(q) {
+      api("/pos/customers/?q=" + encodeURIComponent(q)).then(function(data) {
+        renderCustomerList(data.customers || []);
+      }).catch(showErr);
+    }
+
+    function renderCustomerList(list) {
+      custListContainer.innerHTML = "";
+      if (!list.length) {
+        custListContainer.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-weight:500;">No customers found.</div>';
+        return;
+      }
+
+      list.forEach(function(c) {
+        var row = document.createElement("div");
+        row.className = "cust-row";
+        
+        var content = 
+          '<div class="cust-row-left">' + c.name + '</div>' +
+          '<div class="cust-row-mid">' +
+            '<div class="cust-meta-item">' +
+              '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
+              '<span>' + c.email + '</span>' +
+            '</div>' +
+            (c.phone ? 
+            '<div class="cust-meta-item">' +
+              '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
+              '<span>' + c.phone + '</span>' +
+            '</div>' : '') +
+          '</div>' +
+          '<div class="cust-row-right">' +
+            '<button class="cust-dots" title="Edit">⋮</button>' +
+            '<div class="cust-actions-pop" id="pop-' + c.id + '">' +
+              '<button class="cust-action-opt" id="edit-opt-' + c.id + '">Edit</button>' +
+            '</div>' +
+          '</div>';
+
+        row.innerHTML = content;
+
+        // Click row to assign customer to order
+        row.addEventListener("click", function(e) {
+          if (e.target.closest(".cust-dots") || e.target.closest(".cust-actions-pop")) {
+            return;
+          }
+          api(orderUrl("customer/"), "POST", { customer_id: c.id }).then(function(newOrder) {
+            setOrder(newOrder);
+            toast("Customer assigned ✓");
+            closeCustomerModal();
+          }).catch(showErr);
+        });
+
+        // Click three dots to open Popover edit menu
+        var dots = row.querySelector(".cust-dots");
+        var pop = row.querySelector(".cust-actions-pop");
+        dots.addEventListener("click", function(e) {
+          e.stopPropagation();
+          // Hide all other open popovers first
+          document.querySelectorAll(".cust-actions-pop").forEach(function(p) {
+            if (p !== pop) p.classList.remove("show");
+          });
+          pop.classList.toggle("show");
+        });
+
+        // Edit option click handler
+        row.querySelector("#edit-opt-" + c.id).addEventListener("click", function(e) {
+          e.stopPropagation();
+          pop.classList.remove("show");
+          openCustomerForm(c);
+        });
+
+        custListContainer.appendChild(row);
+      });
+    }
+
+    // Close any open popovers when clicking outside
+    document.addEventListener("click", function() {
+      document.querySelectorAll(".cust-actions-pop").forEach(function(pop) {
+        pop.classList.remove("show");
       });
     });
 

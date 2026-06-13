@@ -25,4 +25,10 @@ urlpatterns = [
     path("order/<int:pk>/razorpay/verify/", views.order_razorpay_verify, name="order-razorpay-verify"),
     path("order/<int:pk>/upi-qr/", views.order_upi_qr, name="order-upi-qr"),
     path("order/<int:pk>/cancel/", views.order_cancel, name="order-cancel"),
+
+    # Customer endpoints
+    path("customers/", views.customer_list, name="customer-list"),
+    path("customers/create/", views.customer_create_update, name="customer-create"),
+    path("customers/<int:pk>/edit/", views.customer_create_update, name="customer-edit"),
+    path("customers/<int:pk>/delete/", views.customer_delete, name="customer-delete"),
 ]

@@ -113,6 +113,79 @@
     </div>
 </div>
 
+<!-- Dedicated Customer Management Modal -->
+<div class="pos-modal" id="customer-modal" hidden>
+    <div class="pos-modal-card customer-modal-card">
+        <!-- List View -->
+        <div id="customer-list-view">
+            <div class="customer-modal-head">
+                <button class="cust-add-btn" id="cust-add-trigger" title="Add Customer">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                </button>
+                
+                <div class="cust-search-wrap">
+                    <input type="text" id="cust-search-input" placeholder="Search customer…" autocomplete="off">
+                    <svg class="cust-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </div>
+                
+                <button class="pos-modal-close" id="cust-modal-close">✕</button>
+            </div>
+            
+            <div class="customer-list-container" id="customer-list-container">
+                <!-- Row items injected dynamically -->
+            </div>
+        </div>
+
+        <!-- Add/Edit Form View (hidden by default) -->
+        <div id="customer-form-view" hidden>
+            <div class="customer-form-head">
+                <h3 id="cust-form-title">Edit Customer</h3>
+                <button class="cust-form-close" id="cust-form-close">✕</button>
+            </div>
+            <div class="customer-form-body">
+                <input type="hidden" id="cust-edit-id">
+                
+                <div class="cust-form-field">
+                    <input type="text" id="cust-form-name" placeholder="e.g Eric Smith" required autocomplete="off">
+                </div>
+                
+                <div class="cust-form-field">
+                    <span class="cust-field-icon">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                    </span>
+                    <input type="email" id="cust-form-email" placeholder="eric@odoo.com" required autocomplete="off">
+                </div>
+                
+                <div class="cust-form-field">
+                    <span class="cust-field-icon">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                    </span>
+                    <input type="text" id="cust-form-phone" placeholder="+91 9898989898" autocomplete="off">
+                </div>
+                
+                <div class="cust-form-actions">
+                    <button class="cust-btn cust-btn-discard" id="cust-form-discard">Discard</button>
+                    <button class="cust-btn cust-btn-save" id="cust-form-save">Save</button>
+                </div>
+                
+                <button class="cust-btn cust-btn-delete" id="cust-form-delete" hidden>DELETE</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 
 <!-- Receipt modal -->

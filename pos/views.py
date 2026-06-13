@@ -2,6 +2,7 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -317,6 +318,11 @@ def order_customer(request, pk):
         return resp
     data = _data(request)
     cafe = request.cafe
+    if "customer_id" in data and not data.get("customer_id"):
+        order.customer = None
+        order.save(update_fields=["customer"])
+        return JsonResponse(services.order_json(order))
+        
     if data.get("customer_id"):
         customer = get_object_or_404(Customer, pk=data["customer_id"], cafe=cafe)
     else:
@@ -564,3 +570,75 @@ def order_cancel(request, pk):
     log_action("delete", cafe=request.cafe, request=request, target=order,
                message=f"Cancelled order {order.order_number}.")
     return JsonResponse({"ok": True, "order_number": order.order_number})
+
+
+@cafe_admin_required(require_admin=False)
+def customer_list(request):
+    """JSON list of customers in this cafe. Supports search query 'q'."""
+    cafe = request.cafe
+    q = request.GET.get("q", "").strip().lower()
+    qs = Customer.objects.filter(cafe=cafe)
+    if q:
+        qs = qs.filter(
+            Q(name__icontains=q) |
+            Q(email__icontains=q) |
+            Q(phone__icontains=q)
+        )
+    qs = qs.order_by("name")[:100]
+    data = [{
+        "id": c.id,
+        "name": c.name,
+        "email": c.email or "",
+        "phone": c.phone or "",
+    } for c in qs]
+    return JsonResponse({"customers": data})
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def customer_create_update(request, pk=None):
+    """Create a new customer or update an existing one."""
+    data = _data(request)
+    cafe = request.cafe
+    
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Customer name is required."}, status=400)
+    
+    email = (data.get("email") or "").strip().lower() or None
+    phone = (data.get("phone") or "").strip() or None
+    
+    if pk:
+        customer = get_object_or_404(Customer, pk=pk, cafe=cafe)
+        if email:
+            dup = Customer.objects.filter(cafe=cafe, email=email).exclude(pk=pk).exists()
+            if dup:
+                return JsonResponse({"error": "A customer with this email already exists."}, status=400)
+        customer.name = name
+        customer.email = email
+        customer.phone = phone
+        customer.save()
+    else:
+        if email:
+            dup = Customer.objects.filter(cafe=cafe, email=email).first()
+            if dup:
+                return JsonResponse({"error": "A customer with this email already exists."}, status=400)
+        customer = Customer.objects.create(
+            cafe=cafe, name=name, email=email, phone=phone
+        )
+        
+    return JsonResponse({
+        "id": customer.id,
+        "name": customer.name,
+        "email": customer.email or "",
+        "phone": customer.phone or "",
+    })
+
+
+@cafe_admin_required(require_admin=False)
+@require_POST
+def customer_delete(request, pk):
+    """Delete a customer record."""
+    customer = get_object_or_404(Customer, pk=pk, cafe=request.cafe)
+    customer.delete()
+    return JsonResponse({"ok": True})
