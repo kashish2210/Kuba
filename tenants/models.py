@@ -138,9 +138,16 @@ class Cafe(models.Model):
             f"    --border-strong: color-mix(in srgb, {self.theme_text_color} 20%, transparent);",
             f"    --radius-sm: {max(radius - 6, 4)}px;",
             f"    --radius-md: {radius}px;",
-            f"    --radius-lg: {radius + 6}px;",
             f"    --radius-xl: {radius + 14}px;",
-            "}",
+            "    /* POS specific mappings */",
+            f"    --bg: {self.theme_surface_color};",
+            f"    --panel: {self.theme_surface_alt_color};",
+            f"    --ink: {self.theme_text_color};",
+            f"    --muted: color-mix(in srgb, {self.theme_text_color} 50%, transparent);",
+            f"    --line: color-mix(in srgb, {self.theme_text_color} 15%, transparent);",
+            f"    --accent: {self.theme_sidebar_color};",
+            f"    --soft: color-mix(in srgb, {self.theme_text_color} 5%, transparent);",
+            "}"
         ])
 
     @property
