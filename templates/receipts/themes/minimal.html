@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Receipt {{ order_number }}</title></head>
+<body style="margin:0;background:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1a1a1a;">
+<div style="max-width:440px;margin:32px auto;padding:36px 32px;">
+
+    <div style="text-align:center;margin-bottom:28px;">
+        <div style="font-size:1.6rem;font-weight:300;letter-spacing:.08em;text-transform:uppercase;color:#1a1a1a;">{{ cafe_name }}</div>
+        <div style="width:48px;height:1px;background:#ccc;margin:14px auto;"></div>
+        <div style="font-size:.82rem;color:#888;letter-spacing:.04em;">RECEIPT {{ order_number }}</div>
+    </div>
+
+    <table style="width:100%;font-size:13px;color:#666;border-collapse:collapse;margin-bottom:20px;">
+        <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">Date</td><td style="text-align:right;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1a1a1a;">{{ date }}</td></tr>
+        <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">Table</td><td style="text-align:right;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1a1a1a;">{{ table }}</td></tr>
+        <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">Customer</td><td style="text-align:right;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1a1a1a;">{{ customer_name }}</td></tr>
+        <tr><td style="padding:6px 0;">Payment</td><td style="text-align:right;padding:6px 0;color:#1a1a1a;">{{ payment_method }}</td></tr>
+    </table>
+
+    <div style="border-top:2px solid #1a1a1a;border-bottom:2px solid #1a1a1a;padding:16px 0;margin-bottom:20px;">
+        {{ items_table }}
+    </div>
+
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+        <tr><td style="padding:4px 0;color:#888;">Subtotal</td><td style="text-align:right;padding:4px 0;">{{ subtotal }}</td></tr>
+        <tr><td style="padding:4px 0;color:#888;">Tax (GST)</td><td style="text-align:right;padding:4px 0;">{{ tax }}</td></tr>
+        <tr><td style="padding:4px 0;color:#888;">Discount</td><td style="text-align:right;padding:4px 0;">−{{ discount }}</td></tr>
+        <tr><td style="padding:12px 0 0;font-weight:700;font-size:1.2rem;border-top:1px solid #eee;">Total</td>
+            <td style="text-align:right;padding:12px 0 0;font-weight:700;font-size:1.2rem;border-top:1px solid #eee;">{{ total }}</td></tr>
+    </table>
+
+    <div style="text-align:center;margin-top:32px;padding-top:24px;border-top:1px solid #eee;">
+        <div style="font-size:13px;color:#999;margin-bottom:14px;">Thank you for your visit</div>
+        <a href="{{ review_url }}" style="display:inline-block;border:1.5px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-weight:600;padding:10px 22px;border-radius:4px;font-size:13px;letter-spacing:.03em;">Leave a Review</a>
+        <div style="font-size:10px;color:#ccc;margin-top:18px;letter-spacing:.06em;">POWERED BY KUBA</div>
+    </div>
+</div>
+</body>
+</html>

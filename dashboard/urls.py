@@ -59,6 +59,8 @@ urlpatterns = [
     path("receipts/", views.receipt_settings, name="receipts"),
     path("receipts/preview/", views.receipt_preview, name="receipt-preview"),
     path("receipts/test/", views.receipt_test, name="receipt-test"),
+    path("receipts/themes/", views.receipt_themes_list, name="receipt-themes-list"),
+    path("receipts/apply-theme/", views.receipt_apply_theme, name="receipt-apply-theme"),
 
     # Feedback
     path("feedback/", views.feedback_settings, name="feedback-settings"),

@@ -1,5 +1,6 @@
 import json
 import datetime
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.views import redirect_to_login
@@ -1071,6 +1072,42 @@ def receipt_test(request):
     else:
         messages.error(request, "Could not send the test — check the SMTP settings.")
     return redirect("dashboard:receipts")
+
+
+RECEIPT_THEMES = {
+    "minimal": {"name": "Clean Minimal", "desc": "White, line-based, lightweight. Great for takeaway.", "file": "minimal.html"},
+    "dark_luxury": {"name": "Dark Luxury", "desc": "Charcoal & gold, serif typography. Fine dining.", "file": "dark_luxury.html"},
+    "cafe_warm": {"name": "Cafe Warm", "desc": "Warm brown tones, logo-centric. Classic café feel.", "file": "cafe_warm.html"},
+    "modern_card": {"name": "Modern Card", "desc": "Gradient header, card layout, vibrant purple.", "file": "modern_card.html"},
+}
+
+
+@cafe_admin_required
+@require_POST
+def receipt_apply_theme(request):
+    """Return the HTML content of a receipt theme so the editor can load it."""
+    import json
+    from pathlib import Path
+
+    data = json.loads(request.body) if request.content_type == "application/json" else {}
+    slug = data.get("theme", "")
+    if slug not in RECEIPT_THEMES:
+        return JsonResponse({"error": "Unknown theme."}, status=400)
+    theme_path = Path(settings.BASE_DIR) / "templates" / "receipts" / "themes" / RECEIPT_THEMES[slug]["file"]
+    if not theme_path.is_file():
+        return JsonResponse({"error": "Theme file not found."}, status=404)
+    html = theme_path.read_text(encoding="utf-8")
+    return JsonResponse({"html": html, "name": RECEIPT_THEMES[slug]["name"]})
+
+
+@cafe_admin_required
+def receipt_themes_list(request):
+    """Return the list of available themes as JSON."""
+    themes = [
+        {"slug": slug, "name": info["name"], "desc": info["desc"]}
+        for slug, info in RECEIPT_THEMES.items()
+    ]
+    return JsonResponse({"themes": themes})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
