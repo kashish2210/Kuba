@@ -213,7 +213,7 @@
         cell.className = "floor-table" + (t.occupied ? " occupied" : "");
         cell.innerHTML = t.number + "<small>" + t.seats + " seats</small>";
         cell.addEventListener("click", function () {
-          api(U.orderStart, "POST", { table: t.id }).then(function (d) {
+          api(U.orderStart, "POST", { table: t.id, current_order: order ? order.id : null }).then(function (d) {
             setOrder(d);
             $("floor-modal").hidden = true;
           }).catch(showErr);

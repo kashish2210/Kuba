@@ -358,6 +358,34 @@ def _resequence_floor_tables(cafe, floor_id):
             changed = True
     if changed:
         CafeTable.objects.bulk_update(tables, ["sort_order"])
+@cafe_admin_required
+@require_POST
+def table_move(request):
+    try:
+        data = json.loads(request.body)
+        table_id = data.get("table_id")
+        target_floor_id = data.get("target_floor_id")
+        swap_table_id = data.get("swap_table_id")
+
+        table = get_object_or_404(CafeTable, pk=table_id, cafe=request.cafe)
+        target_floor = get_object_or_404(Floor, pk=target_floor_id, cafe=request.cafe)
+
+        # Move to target floor
+        if table.floor_id != target_floor.id:
+            table.floor = target_floor
+            table.save(update_fields=["floor"])
+            log_action("update", cafe=request.cafe, request=request, target=table,
+                       message=f"Moved table '{table.table_number}' to {target_floor.name}.")
+
+        if swap_table_id:
+            swap_table = get_object_or_404(CafeTable, pk=swap_table_id, cafe=request.cafe)
+            table.sort_order, swap_table.sort_order = swap_table.sort_order, table.sort_order
+            table.save(update_fields=["sort_order"])
+            swap_table.save(update_fields=["sort_order"])
+
+        return JsonResponse({"ok": True, "redirect_url": f"{_floors_url(request)}?floor={target_floor.id}"})
+    except Exception as e:
+        return JsonResponse({"ok": False, "message": str(e)}, status=400)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

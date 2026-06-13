@@ -150,15 +150,49 @@ def order_start(request):
     session = services.current_session(cafe)
     if session is None:
         return JsonResponse({"error": "No open POS session."}, status=400)
-    table_id = _data(request).get("table")
+    data = _data(request)
+    table_id = data.get("table")
+    current_order_id = data.get("current_order")
     table = get_object_or_404(CafeTable, pk=table_id, cafe=cafe)
-    order = Order.objects.filter(cafe=cafe, table=table, status__in=EDITABLE_STATUSES).first()
-    if order is None:
-        order = Order.objects.create(
-            cafe=cafe, session=session, table=table, employee=request.user,
-            status=Order.OrderStatus.DRAFT, order_number=services.next_order_number(cafe),
-            subtotal=0, tax_amount=0, discount_amount=0, total=0,
+
+    with transaction.atomic():
+        order = (
+            Order.objects.select_for_update()
+            .filter(cafe=cafe, table=table, status__in=EDITABLE_STATUSES)
+            .first()
         )
+        current_order = None
+        if current_order_id:
+            current_order = (
+                Order.objects.select_for_update()
+                .filter(
+                    pk=current_order_id,
+                    cafe=cafe,
+                    session=session,
+                    status=Order.OrderStatus.DRAFT,
+                )
+                .first()
+            )
+
+        if (
+            current_order is not None
+            and current_order.id != getattr(order, "id", None)
+            and not current_order.line_items.exists()
+        ):
+            if order is None:
+                current_order.table = table
+                current_order.save(update_fields=["table"])
+                order = current_order
+            elif current_order.table_id is not None:
+                current_order.table = None
+                current_order.save(update_fields=["table"])
+
+        if order is None:
+            order = Order.objects.create(
+                cafe=cafe, session=session, table=table, employee=request.user,
+                status=Order.OrderStatus.DRAFT, order_number=services.next_order_number(cafe),
+                subtotal=0, tax_amount=0, discount_amount=0, total=0,
+            )
     return JsonResponse(services.order_json(order))
 
 
