@@ -35,3 +35,14 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif not getattr(settings, 'USE_CLOUDINARY', False):
+    # Production without Cloudinary: serve user-uploaded media through Django.
+    # Cloudinary (when configured) serves media from its own CDN, so this
+    # fallback is only needed for local-disk media. Functional but not ideal
+    # for high traffic — prefer Cloudinary or a CDN at scale.
+    from django.urls import re_path
+    from django.views.static import serve
+
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
