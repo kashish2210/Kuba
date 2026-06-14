@@ -3,6 +3,9 @@
 > A full-stack, multi-tenant Point of Sale system built for modern cafes. Each cafe gets its own isolated subdomain workspace with a complete POS terminal, live Kitchen Display System, AI assistant, loyalty programs, smart feedback collection, and more — all managed from a central super-admin panel.
 
 ---
+Deployed on : [this link](kashishshrivastav.in)
+
+Video is available on : [this link](https://drive.google.com/file/d/1iAor_smt0eA2am9pCNaYqT42IcAdH6Hn/view?usp=drive_link)
 
 ## Table of Contents
 
