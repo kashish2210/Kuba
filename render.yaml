@@ -1,33 +1,84 @@
+# render.yaml — Render Blueprint for Kuba
+#
+# BEFORE DEPLOYING:
+#   1. Replace every "yourdomain.com" below with your actual domain
+#   2. Set EMAIL_*, GEMINI / GROQ keys as secret env vars in the Render dashboard
+#   3. Add a wildcard CNAME in your DNS:  *.yourdomain.com → kuba.onrender.com
+#
+# HOW TO DEPLOY:
+#   Render Dashboard → New → Blueprint → connect repo → Root Directory = "Kuba"
+
 services:
   - type: web
-    name: kuba-web
+    name: kuba
     runtime: python
+    # Starter plan ($7/mo) is required for the persistent media disk.
+    # Switch to "free" only if you don't use product images / media uploads.
     plan: starter
-    buildCommand: python manage.py collectstatic --noinput
-    preDeployCommand: python manage.py migrate
-    startCommand: daphne -b 0.0.0.0 -p $PORT kuba.asgi:application
-    healthCheckPath: /
-    autoDeployTrigger: commit
+    buildCommand: "./build.sh"
+    # preDeployCommand runs after build but before traffic switches — safe for migrations
+    preDeployCommand: "python manage.py migrate --no-input"
+    startCommand: "daphne -b 0.0.0.0 -p $PORT kuba.asgi:application"
+    healthCheckPath: /accounts/login/
     envVars:
       - key: DEBUG
         value: "False"
+
       - key: SECRET_KEY
         generateValue: true
+
       - key: CONN_MAX_AGE
         value: "600"
+
       - key: DATABASE_URL
         fromDatabase:
           name: kuba-db
           property: connectionString
+
+      # ── Domain — update all three values ──────────────────────────────
+      - key: KUBA_BASE_DOMAIN
+        value: yourdomain.com
+
+      - key: DJANGO_ALLOWED_HOSTS
+        # Must include your domain AND the Render hostname
+        value: ".yourdomain.com"
+
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://yourdomain.com,https://*.yourdomain.com"
+
+      # ── Media files on persistent disk ────────────────────────────────
+      - key: MEDIA_ROOT
+        value: /mnt/media
+
+      # ── Email (set these as secret env vars in the Render dashboard) ──
+      # EMAIL_HOST           smtp.gmail.com
+      # EMAIL_PORT           587
+      # EMAIL_HOST_USER      you@gmail.com
+      # EMAIL_HOST_PASSWORD  your-app-password
+      # DEFAULT_FROM_EMAIL   Kuba <hello@yourdomain.com>
+
+      # ── Redis for WebSocket channel layers (KDS / live orders) ────────
       - key: REDIS_URL
         fromService:
           name: kuba-redis
           type: keyvalue
           property: connectionString
+
+    disk:
+      name: kuba-media
+      mountPath: /mnt/media
+      sizeGB: 1
+
+  # Render managed Redis (KeyValue) — free tier, 25 MB
   - type: keyvalue
     name: kuba-redis
+    plan: free
+    maxmemoryPolicy: noeviction
     ipAllowList: []
+
 databases:
   - name: kuba-db
     databaseName: kuba
     user: kuba
+    # Free PostgreSQL expires after 90 days — upgrade to paid for production.
+    plan: free

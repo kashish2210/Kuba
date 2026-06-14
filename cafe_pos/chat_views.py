@@ -76,4 +76,4 @@ def chat_message(request, token):
         session=session, role=ChatMessage.Role.ASSISTANT, content=result["reply"]
     )
 
-    return JsonResponse({"reply": result["reply"]})
+    return JsonResponse({"reply": result["reply"], "products": result.get("products", [])})

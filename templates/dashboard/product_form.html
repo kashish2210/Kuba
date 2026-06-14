@@ -9,29 +9,193 @@
     <p class="text-muted"><a href="{% url 'dashboard:products' %}">← Back to products</a></p>
 </div>
 
-<div class="card" style="max-width:640px;">
+<form method="post" enctype="multipart/form-data" class="dash-form">
+{% csrf_token %}
+
+{% if form.non_field_errors %}
+<div style="max-width:700px;margin-bottom:16px;padding:12px 16px;background:#fef3f2;border:1px solid #fca5a5;border-radius:8px;color:#b91c1c;font-size:0.875rem;">
+    {{ form.non_field_errors }}
+</div>
+{% endif %}
+
+{# ── Product info ─────────────────────────────────────────────────────── #}
+<div class="card" style="max-width:700px;margin-bottom:16px;">
     <div class="card-body">
-        <form method="post" enctype="multipart/form-data" class="dash-form">
-            {% csrf_token %}
-            {% if product.image %}
-                <div class="form-group">
-                    <label class="form-label">Current image</label>
-                    <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width:120px;border-radius:10px;display:block;">
-                </div>
-            {% endif %}
-            {% for field in form %}
-                <div class="form-group">
-                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="text-xs text-muted" style="margin-top:4px;">{{ field.help_text }}</div>{% endif %}
-                    {% if field.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ field.errors|striptags }}</div>{% endif %}
-                </div>
-            {% endfor %}
-            <div style="display:flex;gap:8px;margin-top:8px;">
-                <button type="submit" class="btn btn-primary">Save product</button>
-                <a href="{% url 'dashboard:products' %}" class="btn btn-ghost">Cancel</a>
+        <h3 style="font-size:1rem;font-weight:600;margin:0 0 16px;color:var(--text);">Product info</h3>
+
+        {% if product.image %}
+        <div class="form-group">
+            <label class="form-label">Current image</label>
+            <img src="{{ product.image.url }}" alt="{{ product.name }}"
+                 style="max-width:120px;border-radius:10px;display:block;margin-bottom:4px;">
+        </div>
+        {% endif %}
+
+        {% with form.name as f %}
+        <div class="form-group">
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        {% with form.category as f %}
+        <div class="form-group">
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0;">
+            {% with form.price as f %}
+            <div class="form-group">
+                <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+                {{ f }}
+                {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
             </div>
-        </form>
+            {% endwith %}
+            {% with form.unit_of_measure as f %}
+            <div class="form-group">
+                <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+                {{ f }}
+                {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+            </div>
+            {% endwith %}
+        </div>
+
+        {% with form.tax_percentage as f %}
+        <div class="form-group">
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.help_text %}<div class="text-xs text-muted" style="margin-top:4px;">{{ f.help_text }}</div>{% endif %}
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        {% with form.description as f %}
+        <div class="form-group">
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        {% with form.image as f %}
+        <div class="form-group">
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:4px;">
+            {% with form.show_in_kds as f %}
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+                {{ f }}
+                <span class="form-label" style="margin-bottom:0;">{{ f.label }}</span>
+            </label>
+            {% endwith %}
+            {% with form.is_active as f %}
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+                {{ f }}
+                <span class="form-label" style="margin-bottom:0;">{{ f.label }}</span>
+            </label>
+            {% endwith %}
+        </div>
     </div>
 </div>
+
+{# ── Specials & Tags ───────────────────────────────────────────────────── #}
+<div class="card" style="max-width:700px;margin-bottom:16px;">
+    <div class="card-body">
+        <h3 style="font-size:1rem;font-weight:600;margin:0 0 4px;color:var(--text);">Specials &amp; Tags</h3>
+        <p class="text-muted" style="font-size:0.8rem;margin:0 0 16px;">Tags are shared with the AI assistant so it can recommend items in context.</p>
+
+        {% with form.is_featured as f %}
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:16px;padding:12px 14px;background:var(--bg-alt,#f8f9fa);border-radius:8px;border:1px solid var(--border,#e5e7eb);">
+            <span style="margin-top:2px;">{{ f }}</span>
+            <span>
+                <strong style="font-size:0.9rem;">Feature this product</strong>
+                <span class="text-muted" style="display:block;font-size:0.8rem;margin-top:2px;">Highlights the item — shown first in AI recommendations</span>
+            </span>
+        </label>
+        {% endwith %}
+
+        {% with form.tags as f %}
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="{{ f.id_for_label }}">Tags</label>
+            <div id="tag-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="Today's Special">⭐ Today's Special</button>
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="Chef's Special">&#128104;&#8205;&#127859; Chef's Special</button>
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="New">&#128284; New</button>
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="Popular">&#128293; Popular</button>
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="Seasonal">&#127810; Seasonal</button>
+                <button type="button" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;" data-tag="Vegan">&#127807; Vegan</button>
+            </div>
+            {{ f }}
+            <div class="text-xs text-muted" style="margin-top:4px;">Comma-separated. Click a chip to toggle it. Example: <em>Today's Special, Vegan</em></div>
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+    </div>
+</div>
+
+{# ── Customers may also like ───────────────────────────────────────────── #}
+<div class="card" style="max-width:700px;margin-bottom:24px;">
+    <div class="card-body">
+        <h3 style="font-size:1rem;font-weight:600;margin:0 0 4px;color:var(--text);">Customers may also like</h3>
+        <p class="text-muted" style="font-size:0.8rem;margin:0 0 16px;">Linked products are suggested alongside this item by the AI assistant.</p>
+
+        {% with form.cross_sells as f %}
+        <div class="form-group" style="margin-bottom:0;">
+            {{ f }}
+            <div class="text-xs text-muted" style="margin-top:6px;">Hold <kbd style="padding:1px 5px;border:1px solid #ccc;border-radius:3px;font-size:0.75rem;">Ctrl</kbd> / <kbd style="padding:1px 5px;border:1px solid #ccc;border-radius:3px;font-size:0.75rem;">Cmd</kbd> to select multiple.</div>
+            {% if f.errors %}<div class="text-xs" style="color:#c0392b;margin-top:4px;">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endwith %}
+    </div>
+</div>
+
+<div style="max-width:700px;display:flex;gap:8px;margin-bottom:40px;">
+    <button type="submit" class="btn btn-primary">Save product</button>
+    <a href="{% url 'dashboard:products' %}" class="btn btn-ghost">Cancel</a>
+</div>
+
+</form>
+
+<script>
+(function () {
+    var tagsInput = document.getElementById('{{ form.tags.id_for_label }}');
+    if (!tagsInput) return;
+
+    function getTags() {
+        return tagsInput.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    }
+
+    function syncChips() {
+        var current = getTags().map(function (t) { return t.toLowerCase(); });
+        document.querySelectorAll('#tag-chips [data-tag]').forEach(function (btn) {
+            var active = current.includes(btn.dataset.tag.toLowerCase());
+            btn.style.fontWeight = active ? '700' : '';
+            btn.style.borderColor = active ? 'var(--primary,#2d6ef7)' : '';
+            btn.style.color = active ? 'var(--primary,#2d6ef7)' : '';
+        });
+    }
+
+    document.querySelectorAll('#tag-chips [data-tag]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tag = btn.dataset.tag;
+            var tags = getTags();
+            var idx = tags.findIndex(function (t) { return t.toLowerCase() === tag.toLowerCase(); });
+            if (idx === -1) { tags.push(tag); } else { tags.splice(idx, 1); }
+            tagsInput.value = tags.join(', ');
+            syncChips();
+        });
+    });
+
+    tagsInput.addEventListener('input', syncChips);
+    syncChips();
+}());
+</script>
 {% endblock %}

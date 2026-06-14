@@ -1,6 +1,7 @@
 """AI chatbot logic for per-cafe chat assistant (Gemini primary, Groq fallback)."""
 import json
 import logging
+import urllib.error
 import urllib.request
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def _call_gemini(api_key, model, system_prompt, messages):
         "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024},
     }).encode("utf-8")
 
-    model_name = model or "gemini-2.5-flash"
+    model_name = model or "gemini-1.5-flash"
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models"
         f"/{model_name}:generateContent?key={api_key}"
@@ -77,8 +78,12 @@ def _call_gemini(api_key, model, system_prompt, messages):
     req = urllib.request.Request(
         url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise ValueError(f"Gemini HTTP {e.code}: {body[:500]}")
     try:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
