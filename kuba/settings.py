@@ -112,6 +112,14 @@ INSTALLED_APPS = [
     'pos',
 ]
 
+# Optional Cloudinary media storage. Render's free tier has no persistent disk,
+# so uploaded images (product photos, cafe logos) would be lost on every restart
+# and aren't served in production. When CLOUDINARY_URL is set, media is stored on
+# and served from Cloudinary's CDN instead. Leave it unset for local development.
+USE_CLOUDINARY = bool(os.environ.get('CLOUDINARY_URL', '').strip())
+if USE_CLOUDINARY:
+    INSTALLED_APPS += ['cloudinary', 'cloudinary_storage']
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -216,9 +224,15 @@ STATIC_URL = '/static/'
 STATIC_ROOT = Path(os.environ.get('STATIC_ROOT', str(BASE_DIR / 'staticfiles')))
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    BASE_DIR / 'stock',  # Videos & screenshots for landing page
+    # Collected under a "stock/" prefix so {% static 'stock/...' %} resolves.
+    ('stock', BASE_DIR / 'stock'),  # Videos & screenshots for landing page
 ]
 STORAGES = {
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'
+        if USE_CLOUDINARY
+        else 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'kuba.storage.RelaxedManifestStaticFilesStorage',
     },
