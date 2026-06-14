@@ -12,33 +12,79 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from urllib.parse import unquote, urlparse
 from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+def _csv_env(name):
+    return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
+
+
+def _truthy(value):
+    return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _database_config_from_url(database_url):
+    parsed = urlparse(database_url)
+    if parsed.scheme in {'postgres', 'postgresql'}:
+        return {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed.path.lstrip('/'),
+            'USER': unquote(parsed.username or ''),
+            'PASSWORD': unquote(parsed.password or ''),
+            'HOST': parsed.hostname or '',
+            'PORT': str(parsed.port or ''),
+            'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', '600')),
+            'OPTIONS': {'sslmode': 'require'},
+        }
+    if parsed.scheme == 'sqlite':
+        return {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': Path(unquote(parsed.path)),
+        }
+    raise ValueError(f'Unsupported DATABASE_URL scheme: {parsed.scheme}')
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-z9wnpqj(-7a9ar98jt!+^4m$93o3(kll5sp@kn!z3w9)zpb$pt'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-me-on-render')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _truthy(os.environ.get('DEBUG', 'True'))
 
 # ─── Multi-tenant / subdomain configuration ──────────────────────────────
 # Cafes live at <subdomain>.<KUBA_BASE_DOMAIN>; the Django admin lives at
 # <KUBA_ADMIN_SUBDOMAIN>.<KUBA_BASE_DOMAIN>. Locally, *.localhost works too.
 KUBA_BASE_DOMAIN = os.environ.get('KUBA_BASE_DOMAIN', 'kuba.com')
 KUBA_ADMIN_SUBDOMAIN = os.environ.get('KUBA_ADMIN_SUBDOMAIN', 'admin')
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
 
-ALLOWED_HOSTS = [
+ALLOWED_HOSTS = _csv_env('DJANGO_ALLOWED_HOSTS') or [
     f'.{KUBA_BASE_DOMAIN}',  # kuba.com and every *.kuba.com subdomain
     '.localhost',            # *.localhost for local subdomain testing
     'localhost',
     '127.0.0.1',
 ]
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+CSRF_TRUSTED_ORIGINS = _csv_env('DJANGO_CSRF_TRUSTED_ORIGINS') or [
+    f'https://{KUBA_BASE_DOMAIN}',
+    f'https://*.{KUBA_BASE_DOMAIN}',
+]
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 # Allow same-origin iframes (dashboard embeds POS/KDS)
 X_FRAME_OPTIONS = 'SAMEORIGIN'
@@ -68,6 +114,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -106,12 +153,25 @@ CHANNEL_LAYERS = {
     },
 }
 
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
+    'default': _database_config_from_url(os.environ['DATABASE_URL'])
+    if os.environ.get('DATABASE_URL')
+    else {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
@@ -152,11 +212,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = Path(os.environ.get('STATIC_ROOT', str(BASE_DIR / 'staticfiles')))
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    ('stock', BASE_DIR / 'stock'),  # Videos & screenshots for landing page
+    BASE_DIR / 'stock',  # Videos & screenshots for landing page
 ]
+STORAGES = {
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 
 SITE_ID = 1
@@ -169,8 +235,8 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media')))
 
 # ─── Email ────────────────────────────────────────────────────────────────
 # Platform default SMTP (from .env). Cafes may override with their own SMTP in

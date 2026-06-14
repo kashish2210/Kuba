@@ -1,10 +1,12 @@
 django
 channels
+channels-redis
 daphne
 pillow
 django-allauth
 django-jazzmin
 qrcode
 razorpay
-dotenv
-daphne
+python-dotenv
+psycopg2-binary
+whitenoise
