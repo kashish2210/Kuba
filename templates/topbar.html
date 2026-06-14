@@ -66,7 +66,7 @@
             <!-- Profile Dropdown -->
             <div class="profile-dropdown-container">
                 <div class="profile-trigger" tabindex="0" role="button" aria-label="User menu">
-                    <div class="profile-trigger-avatar">
+                    <div class="profile-trigger-avatar" id="topbar-small-avatar">
                         {% if request.user.is_authenticated %}
                             {{ request.user.username|first|upper }}
                         {% else %}
@@ -90,11 +90,11 @@
                             <div class="profile-dropdown-name">{{ request.user.username }}</div>
                             <div class="profile-dropdown-email">{{ request.user.email|default:"No email set" }}</div>
                         </div>
-                        <a href="#">
+                        <a href="javascript:void(0)" id="topbar-my-profile-btn">
                             <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             My Profile
                         </a>
-                        <a href="#">
+                        <a href="javascript:void(0)" id="topbar-settings-btn">
                             <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             Settings
                         </a>
@@ -117,6 +117,325 @@
         </div>
     </div>
 </header>
+
+<!-- Modals for Profile and Settings -->
+<style>
+/* Modal Base Styles */
+.custom-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.custom-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+.custom-modal {
+    background: var(--surface);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+.custom-modal-overlay.active .custom-modal {
+    transform: translateY(0);
+}
+.custom-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-hover);
+}
+.custom-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-main);
+}
+.custom-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+}
+.custom-modal-close:hover {
+    background: var(--border);
+    color: var(--text-main);
+}
+.custom-modal-body {
+    padding: 20px;
+    color: var(--text-main);
+}
+.custom-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: var(--surface-hover);
+}
+/* Profile Form Styles */
+.profile-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.profile-stat-card {
+    background: var(--background);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+.profile-stat-card h4 {
+    margin: 0 0 5px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+.profile-stat-card p {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+body.font-inter { font-family: 'Inter', sans-serif !important; }
+body.font-playfair { font-family: 'Playfair Display', serif !important; }
+body.font-patrick { font-family: 'Patrick Hand', cursive !important; }
+</style>
+
+<!-- Profile Modal -->
+<div class="custom-modal-overlay" id="profile-modal-overlay">
+    <div class="custom-modal">
+        <div class="custom-modal-header">
+            <h3>My Profile</h3>
+            <button class="custom-modal-close" onclick="closeModal('profile-modal-overlay')">
+                <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="custom-modal-body">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="position: relative; display: inline-block;">
+                    <div id="modal-large-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 10px auto; font-weight: bold; overflow: hidden; background-size: cover; background-position: center;">
+                        <span>{% if request.user.is_authenticated %}{{ request.user.username|first|upper }}{% else %}?{% endif %}</span>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px; display: flex; justify-content: center; gap: 8px;">
+                    <label class="btn btn-secondary btn-sm" style="cursor: pointer; margin: 0; padding: 6px 12px; font-family: 'Inter', sans-serif;">
+                        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Update
+                        <input type="file" id="profile-photo-upload" accept="image/*" style="display: none;" onchange="handleProfilePhoto(this)">
+                    </label>
+                    <button type="button" class="btn btn-ghost btn-sm" style="margin: 0; padding: 6px 12px; color: #e74c3c; border-color: rgba(231, 76, 60, 0.3); font-family: 'Inter', sans-serif;" onclick="removeProfilePhoto()">
+                        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Remove
+                    </button>
+                </div>
+                <h2 style="margin: 0; font-size: 1.5rem;">{{ request.user.username|default:"Guest" }}</h2>
+                <p style="margin: 5px 0 0 0; color: var(--text-muted);">{{ request.user.email|default:"No email set" }}</p>
+            </div>
+            
+            <div class="profile-stat-grid">
+                <div class="profile-stat-card">
+                    <h4>Role</h4>
+                    <p>{% if request.user.is_superuser %}Admin{% else %}Staff{% endif %}</p>
+                </div>
+                <div class="profile-stat-card">
+                    <h4>Status</h4>
+                    <p style="color: #27ae60;">Active</p>
+                </div>
+            </div>
+            
+            <div style="background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-muted);">Account Actions</h4>
+                <div class="settings-row">
+                    <span>Change Password</span>
+                    <a href="{% url 'account_change_password' %}" class="btn btn-secondary btn-sm">Update</a>
+                </div>
+            </div>
+        </div>
+        <div class="custom-modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('profile-modal-overlay')">Close</button>
+            <a href="{% url 'account_logout' %}" class="btn btn-danger">Logout</a>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="custom-modal-overlay" id="settings-modal-overlay">
+    <div class="custom-modal">
+        <div class="custom-modal-header">
+            <h3>Quick Settings</h3>
+            <button class="custom-modal-close" onclick="closeModal('settings-modal-overlay')">
+                <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="custom-modal-body">
+
+            <div class="settings-row">
+                <div>
+                    <strong>Font Style</strong>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Customize the interface font</div>
+                </div>
+                <select id="font-selector" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer;" onchange="handleFontChange(this.value)">
+                    <option value="font-patrick">Patrick Hand</option>
+                    <option value="font-inter">Inter</option>
+                    <option value="font-playfair">Playfair Display</option>
+                </select>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-muted);">Advanced Configuration</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <a href="{% url 'dashboard:payment-methods' %}" class="btn btn-secondary" style="text-align: left; justify-content: flex-start; width: 100%;">⚙️ Payment Methods</a>
+                    <a href="{% url 'dashboard:receipts' %}" class="btn btn-secondary" style="text-align: left; justify-content: flex-start; width: 100%;">🧾 Receipt Settings</a>
+                </div>
+            </div>
+        </div>
+        <div class="custom-modal-footer">
+            <button class="btn btn-primary" onclick="closeModal('settings-modal-overlay'); alert('Settings saved successfully!');">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if(modal) {
+        modal.classList.add('active');
+        // Close profile dropdown if open
+        const dropdown = document.querySelector('.profile-dropdown');
+        if(dropdown) {
+            dropdown.style.display = 'none';
+            setTimeout(() => {
+                dropdown.style.display = '';
+            }, 300);
+        }
+    }
+}
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if(modal) {
+        modal.classList.remove('active');
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const profileBtn = document.getElementById('topbar-my-profile-btn');
+    const settingsBtn = document.getElementById('topbar-settings-btn');
+    
+    if(profileBtn) {
+        profileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('profile-modal-overlay');
+        });
+    }
+    if(settingsBtn) {
+        settingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('settings-modal-overlay');
+        });
+    }
+    
+    // Close modal on outside click
+    const overlays = document.querySelectorAll('.custom-modal-overlay');
+    overlays.forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if(e.target === this) {
+                closeModal(this.id);
+            }
+        });
+    });
+
+    // Apply saved preferences on load
+    const savedFont = localStorage.getItem('kuba-font') || 'font-patrick';
+    const savedPhoto = localStorage.getItem('kuba-profile-photo');
+    
+    document.body.classList.add(savedFont);
+    
+    document.getElementById('font-selector').value = savedFont;
+    
+    if (savedPhoto) {
+        applyProfilePhoto(savedPhoto);
+    }
+});
+
+function handleFontChange(font) {
+    document.body.classList.remove('font-patrick', 'font-inter', 'font-playfair');
+    document.body.classList.add(font);
+    localStorage.setItem('kuba-font', font);
+}
+
+function handleProfilePhoto(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            localStorage.setItem('kuba-profile-photo', dataUrl);
+            applyProfilePhoto(dataUrl);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function applyProfilePhoto(dataUrl) {
+    const largeAvatar = document.getElementById('modal-large-avatar');
+    if (largeAvatar) {
+        largeAvatar.style.backgroundImage = `url(${dataUrl})`;
+        const span = largeAvatar.querySelector('span');
+        if (span) span.style.display = 'none';
+    }
+    const smallAvatar = document.getElementById('topbar-small-avatar');
+    if (smallAvatar) {
+        smallAvatar.style.backgroundImage = `url(${dataUrl})`;
+        smallAvatar.style.backgroundSize = 'cover';
+        smallAvatar.style.backgroundPosition = 'center';
+        smallAvatar.innerHTML = '';
+    }
+}
+
+function removeProfilePhoto() {
+    localStorage.removeItem('kuba-profile-photo');
+    
+    const largeAvatar = document.getElementById('modal-large-avatar');
+    if (largeAvatar) {
+        largeAvatar.style.backgroundImage = '';
+        const span = largeAvatar.querySelector('span');
+        if (span) span.style.display = '';
+    }
+    const smallAvatar = document.getElementById('topbar-small-avatar');
+    if (smallAvatar) {
+        smallAvatar.style.backgroundImage = '';
+        smallAvatar.innerHTML = `{% if request.user.is_authenticated %}{{ request.user.username|first|upper }}{% else %}?{% endif %}`;
+    }
+}
+</script>
 
 <!-- Sidebar Toggle Script -->
 <script>
